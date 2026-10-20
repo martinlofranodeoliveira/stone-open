@@ -18,6 +18,23 @@ Os scripts antigos de teste que efetuavam chamadas reais de autenticação, cart
 
 O teste JavaScript extrai o script real do view e usa DOM/fetch simulados para os três estados de QR local e a política CSP; não substitui uma sessão em navegador. Os testes de webhook usam um substituto de banco em memória e as classes reais de controlador, HTTP e assinatura; verificam que eventos sem autenticação não são persistidos. Esses testes não acionam APIs de provedores, não criam contas, não conectam banco e não fazem transações. Não comprovam o fluxo financeiro completo nem a disponibilidade de serviços externos. Configure e valide uma integração própria separadamente antes de usar dados reais.
 
+## Contexto seguro de logs
+
+O auxiliar puro `App\Support\SafeLogContext::redact(array)` gera uma copia redigida de contexto estruturado para logs, sem alterar a entrada e sem acessar banco, disco, rede, contas ou APIs de pagamento.
+
+Chaves sensiveis (comparacao sem diferenca de caixa) tem o valor trocado por `'[REDACTED]'`: `password`, `authorization`, `api_key`, `token`, `secret`, `card_number` e `cvv`. Demais chaves/valores sao preservados. A redacao e recursiva em arrays/listas ate 8 niveis; objetos ou profundidade maior lancam `InvalidArgumentException('Invalid log context')` sem incluir conteudo original na mensagem.
+
+Exemplo sintetico (sem dados reais):
+
+```php
+use App\Support\SafeLogContext;
+
+$redacted = SafeLogContext::redact($context);
+// chaves sensiveis passam a '[REDACTED]'; demais valores sao preservados
+```
+
+Limites: o exemplo usa apenas valores ficticios. O auxiliar nao promete anonimizacao completa; revise as chaves registradas antes de gravar logs e valide a integracao propria separadamente. Regressao pura em `lab_tests/safe_log_context.php` via `php -n lab_tests/safe_log_context.php`.
+
 ## Conteúdo excluído e licenças
 
 Excluídos: `.env`, logs, storage/cache da operação, Postman credenciado, webhook capturado, documentação operacional/deploy e marcas de cartão sem licença estabelecida. Ícones genéricos substituem essas marcas; as bibliotecas frontend vendorizadas continuam incluídas com suas licenças preservadas. A edição não contém histórico Git privado.

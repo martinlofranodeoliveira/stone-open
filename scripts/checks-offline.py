@@ -120,6 +120,7 @@ def inner():
         assert summary in output.splitlines()
     print(f'Passed {len(files)} PHP syntax checks, exactly {checks} public PHP checks and 4 JavaScript privacy cases; startup guards and schema/docs validated.')
     print('No database connection, payment, account creation or provider API call was performed.')
+    subprocess.run(['/usr/bin/python3', '/work/scripts/run-lab-tests.py', 'stone-open', 'all'], check=True, timeout=180, stdin=subprocess.DEVNULL)
 
 
 def sandbox(snapshot, php_runtime, node_runtime):
