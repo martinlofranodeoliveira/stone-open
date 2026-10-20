@@ -1,0 +1,2876 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Stone Open API",
+    "description": "Documentação das rotas HTTP expostas por Stone Open. Todas as rotas de `/api/v1/*` exigem autenticação via Bearer token (Authorization: Bearer <api_token>) ou via cabeçalhos `X-Client-Id` + `X-Client-Secret`, exceto `POST /api/v1/cards/tokenize` que é pública e usa `public_key` (app_id). As respostas de erro seguem o padrão JSON utilizado pelos controladores.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Instância configurada pelo usuário."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Webhooks"
+    },
+    {
+      "name": "Internal"
+    },
+    {
+      "name": "Payments"
+    },
+    {
+      "name": "Subscriptions"
+    },
+    {
+      "name": "Payment Links"
+    },
+    {
+      "name": "Plans"
+    },
+    {
+      "name": "Customers"
+    },
+    {
+      "name": "Queries"
+    },
+    {
+      "name": "Cards"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "API Token"
+      },
+      "XClientId": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Client-Id"
+      },
+      "XClientSecret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Client-Secret"
+      }
+    },
+    "schemas": {
+      "ErrorStandard": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "status_code": {
+            "type": "string"
+          },
+          "http_status": {
+            "type": "integer"
+          },
+          "required": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "errors_en": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "errors_pt": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": true
+      },
+      "SimpleError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "PaymentSummary": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "pending",
+              "paid",
+              "authorized",
+              "failed",
+              "canceled",
+              "chargeback",
+              "refunded"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          },
+          "stone_payment_id": {
+            "type": "string"
+          },
+          "amount_cents": {
+            "type": "integer"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "pix",
+              "credit_card",
+              "boleto"
+            ]
+          },
+          "pix_qr_code": {
+            "type": "string"
+          },
+          "pix_qr_code_url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "pix_expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": true
+      },
+      "CardInstallment": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "integer"
+          },
+          "amount_cents": {
+            "type": "integer"
+          },
+          "total_cents": {
+            "type": "integer"
+          },
+          "interest_rate": {
+            "type": "number",
+            "format": "float"
+          },
+          "is_interest_free": {
+            "type": "boolean"
+          },
+          "amount_formatted": {
+            "type": "string"
+          },
+          "total_formatted": {
+            "type": "string"
+          },
+          "interest_rate_formatted": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "label_with_interest": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentCreateRequest": {
+        "type": "object",
+        "oneOf": [
+          {
+            "title": "PIX",
+            "required": [
+              "amount_cents",
+              "client_reference_id",
+              "payment_method_type",
+              "customer"
+            ],
+            "properties": {
+              "amount_cents": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "client_reference_id": {
+                "type": "string"
+              },
+              "payment_method_type": {
+                "type": "string",
+                "enum": [
+                  "pix"
+                ]
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Data/hora de expiração do QRCode (opcional)"
+              },
+              "expires_in": {
+                "type": "integer",
+                "description": "Segundos até expirar o QRCode (legado)"
+              },
+              "customer": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "document"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "document": {
+                    "type": "string",
+                    "description": "CPF/CNPJ, apenas dígitos"
+                  },
+                  "phones": {
+                    "type": "object",
+                    "properties": {
+                      "mobile_phone": {
+                        "type": "object",
+                        "properties": {
+                          "country_code": {
+                            "type": "string"
+                          },
+                          "area_code": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "title": "Boleto",
+            "required": [
+              "amount_cents",
+              "client_reference_id",
+              "payment_method_type",
+              "customer",
+              "due_at"
+            ],
+            "properties": {
+              "amount_cents": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "client_reference_id": {
+                "type": "string"
+              },
+              "payment_method_type": {
+                "type": "string",
+                "enum": [
+                  "boleto"
+                ]
+              },
+              "due_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Data/hora de vencimento"
+              },
+              "boleto": {
+                "type": "object",
+                "properties": {
+                  "bank": {
+                    "type": "string"
+                  },
+                  "instructions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "document_number": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "nosso_numero": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": true
+              },
+              "customer": {
+                "type": "object",
+                "required": [
+                  "name",
+                  "email",
+                  "document"
+                ],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "document": {
+                    "type": "string",
+                    "description": "CPF/CNPJ, apenas dígitos"
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          },
+          {
+            "title": "Cartão de Crédito",
+            "required": [
+              "amount_cents",
+              "client_reference_id",
+              "payment_method_type"
+            ],
+            "properties": {
+              "amount_cents": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "client_reference_id": {
+                "type": "string"
+              },
+              "payment_method_type": {
+                "type": "string",
+                "enum": [
+                  "credit_card"
+                ]
+              },
+              "juros": {
+                "type": "string",
+                "enum": [
+                  "C",
+                  "V"
+                ],
+                "description": "C=comprador assume juros, V=vendedor assume. Se omitido, usa a configuração do site."
+              },
+              "bin": {
+                "type": "string",
+                "description": "BIN (6 dígitos) para cálculo automático quando juros=C"
+              },
+              "card_token": {
+                "type": "string"
+              },
+              "card_id": {
+                "type": "string"
+              },
+              "card": {
+                "type": "object",
+                "properties": {
+                  "number": {
+                    "type": "string"
+                  },
+                  "holder_name": {
+                    "type": "string"
+                  },
+                  "exp_month": {
+                    "type": "integer"
+                  },
+                  "exp_year": {
+                    "type": "integer"
+                  },
+                  "cvv": {
+                    "type": "string"
+                  },
+                  "billing_address": {
+                    "type": "object",
+                    "properties": {
+                      "line_1": {
+                        "type": "string"
+                      },
+                      "zip_code": {
+                        "type": "string"
+                      },
+                      "city": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "country": {
+                        "type": "string"
+                      }
+                    },
+                    "additionalProperties": true
+                  }
+                },
+                "additionalProperties": true
+              }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    }
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "time": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/stone": {
+      "post": {
+        "tags": [
+          "Webhooks"
+        ],
+        "summary": "Recebe webhooks da Stone/Pagar.me",
+        "description": "Valida IP (opcional), Basic Auth (opcional) e assinatura (se configurada). Persiste evento e dispara processamento assíncrono.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Evento aceito",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "ok": {
+                      "type": "boolean"
+                    },
+                    "queued": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "JSON/assinatura inválidos",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized (Basic)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden (IP)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/drain": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Processa webhooks pendentes",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            },
+            "required": false
+          },
+          {
+            "name": "budget_ms",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 50,
+              "maximum": 2000
+            },
+            "required": false
+          },
+          {
+            "name": "X-Tasks-Secret",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "drained": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tasks/retry": {
+      "get": {
+        "tags": [
+          "Internal"
+        ],
+        "summary": "Reencaminha webhooks com erro",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            },
+            "required": false
+          },
+          {
+            "name": "max_attempts",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10
+            },
+            "required": false
+          },
+          {
+            "name": "X-Tasks-Secret",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "retried": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Cria pagamento (PIX, cartão ou boleto)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "payment": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "summary": {
+                      "$ref": "#/components/schemas/PaymentSummary"
+                    },
+                    "pix": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "boleto": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conta Pagar.me não configurada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Erro de validação / provedor",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Lista pagamentos (filtros opcionais)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "customer_email",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subscription_stone_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "429": {
+            "description": "Rate limit"
+          }
+        }
+      }
+    },
+    "/api/v1/boletos": {
+      "post": {
+        "tags": [
+          "Boletos"
+        ],
+        "summary": "Cria boleto",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PaymentCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação/Stone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Boletos"
+        ],
+        "summary": "Lista boletos locais",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/boletos/{id}": {
+      "get": {
+        "tags": [
+          "Boletos"
+        ],
+        "summary": "Obtém boleto por ID local",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/boletos/stone/{sid}": {
+      "get": {
+        "tags": [
+          "Boletos"
+        ],
+        "summary": "Obtém boleto por ID Stone (charge)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/boletos/remote": {
+      "get": {
+        "tags": [
+          "Boletos"
+        ],
+        "summary": "Lista boletos direto na Stone",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "payment_method",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "order_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "created_since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "created_until",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/for-customer": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Cria pagamento para cliente existente (por id/email/cpf)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "stone_customer_id": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "document": {
+                    "type": "string"
+                  },
+                  "payment_method_type": {
+                    "type": "string",
+                    "enum": [
+                      "pix",
+                      "credit_card",
+                      "boleto"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Cliente não encontrado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação/Stone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Obtém pagamento por ID local",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "payment": {
+                      "type": "object",
+                      "additionalProperties": true
+                    },
+                    "summary": {
+                      "$ref": "#/components/schemas/PaymentSummary"
+                    },
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/stone/{sid}": {
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Obtém pagamento por ID Stone",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/by-ref/{ref}": {
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Obtém pagamento por referência do cliente",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/by-subscription/{sid}": {
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Lista webhooks relacionados a uma assinatura",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Cria assinatura (pode criar cliente/card automaticamente)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "stone_plan_id": {
+                    "type": "string"
+                  },
+                  "plano_id": {
+                    "type": "integer"
+                  },
+                  "stone_customer_id": {
+                    "type": "string"
+                  },
+                  "customer": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "payment_method": {
+                    "type": "string",
+                    "enum": [
+                      "credit_card",
+                      "pix",
+                      "boleto"
+                    ]
+                  },
+                  "card_id": {
+                    "type": "string"
+                  },
+                  "card": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "installments": {
+                    "type": "integer"
+                  },
+                  "currency": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "subscription": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação/Stone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorStandard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/for-customer": {
+      "post": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Cria assinatura para cliente existente (por id/email/cpf)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "stone_plan_id": {
+                    "type": "string"
+                  },
+                  "plano_id": {
+                    "type": "integer"
+                  },
+                  "stone_customer_id": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "document": {
+                    "type": "string"
+                  },
+                  "payment_method": {
+                    "type": "string"
+                  },
+                  "card_id": {
+                    "type": "string"
+                  },
+                  "card": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "installments": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criada"
+          },
+          "404": {
+            "description": "Cliente não encontrado"
+          },
+          "422": {
+            "description": "Validação"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/{id}": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Mostra assinatura por ID local",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/stone/{sid}": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Mostra assinatura por ID Stone",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      }
+    },
+    "/api/v1/subscriptions/{id}/events": {
+      "get": {
+        "tags": [
+          "Subscriptions"
+        ],
+        "summary": "Lista eventos da assinatura",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payment-links": {
+      "post": {
+        "tags": [
+          "Payment Links"
+        ],
+        "summary": "Cria link de pagamento (checkout)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "codigo": {
+                    "type": "string"
+                  },
+                  "valor_centavos": {
+                    "type": "integer"
+                  },
+                  "itens": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "cliente": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "frete": {
+                    "type": "object",
+                    "additionalProperties": true
+                  },
+                  "moeda": {
+                    "type": "string"
+                  },
+                  "expira_em_minutos": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "integer"
+                    },
+                    "link_pagamento_url": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "id_pedido_stone": {
+                      "type": "string"
+                    },
+                    "valor_centavos": {
+                      "type": "integer"
+                    },
+                    "moeda": {
+                      "type": "string"
+                    },
+                    "codigo": {
+                      "type": "string"
+                    },
+                    "expira_em": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "expira_em_minutos": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação/Stone"
+          }
+        }
+      }
+    },
+    "/api/v1/plans": {
+      "get": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Lista planos ativos",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Plans"
+        ],
+        "summary": "Cria plano na Stone e localmente",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true,
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "interval": {
+                    "type": "string",
+                    "enum": [
+                      "day",
+                      "week",
+                      "month",
+                      "year"
+                    ]
+                  },
+                  "interval_count": {
+                    "type": "integer"
+                  },
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": true
+                    }
+                  },
+                  "payment_methods": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "installments": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
+                  },
+                  "minimum_price": {
+                    "type": "integer"
+                  },
+                  "statement_descriptor": {
+                    "type": "string"
+                  },
+                  "trial_period_days": {
+                    "type": "integer"
+                  },
+                  "billing_type": {
+                    "type": "string",
+                    "enum": [
+                      "prepaid",
+                      "postpaid",
+                      "exact_day"
+                    ]
+                  },
+                  "billing_day": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado"
+          },
+          "422": {
+            "description": "Validação/Stone"
+          }
+        }
+      }
+    },
+    "/api/v1/customers/upsert": {
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Cria ou atualiza cliente (local e Stone)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "422": {
+            "description": "Validação/Stone"
+          }
+        }
+      }
+    },
+    "/api/v1/customers/update": {
+      "post": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Atualiza cliente por stone_customer_id/email/document",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validação/Stone"
+          }
+        }
+      }
+    },
+    "/api/v1/customers/{id}": {
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Obtém cliente por ID local",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Atualiza cliente local e Stone",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "404": {
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Validação/Stone"
+          }
+        }
+      }
+    },
+    "/api/v1/payments/card": {
+      "post": {
+        "tags": [
+          "Payments"
+        ],
+        "summary": "Pagamento com cartão (dados completos + tokenização no Hub)",
+        "description": "Recebe dados completos do cartão e do comprador. O Hub tokeniza (criptografa) o cartão e continua o pagamento com o token.",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "amount_cents": {
+                    "type": "integer"
+                  },
+                  "client_reference_id": {
+                    "type": "string"
+                  },
+                  "payment_method_type": {
+                    "type": "string",
+                    "enum": [
+                      "credit_card"
+                    ]
+                  },
+                  "installments": {
+                    "type": "integer"
+                  },
+                  "juros": {
+                    "type": "string",
+                    "enum": [
+                      "C",
+                      "V"
+                    ]
+                  },
+                  "customer": {
+                    "type": "object"
+                  },
+                  "card": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "string"
+                      },
+                      "holder_name": {
+                        "type": "string"
+                      },
+                      "exp_month": {
+                        "type": "integer"
+                      },
+                      "exp_year": {
+                        "type": "integer"
+                      },
+                      "cvv": {
+                        "type": "string"
+                      },
+                      "billing_address": {
+                        "type": "object"
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "amount_cents",
+                  "client_reference_id",
+                  "payment_method_type",
+                  "installments",
+                  "card"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Criado",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação"
+          },
+          "409": {
+            "description": "Conta Pagar.me não configurada"
+          }
+        }
+      }
+    },
+    "/api/v1/customers": {
+      "get": {
+        "tags": [
+          "Queries"
+        ],
+        "summary": "Busca clientes (email, document, stone_customer_id)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cpf",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stone_customer_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/customers/search": {
+      "get": {
+        "tags": [
+          "Customers"
+        ],
+        "summary": "Busca clientes (com envelope de status)",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            }
+          },
+          {
+            "name": "document",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cpf",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "stone_customer_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/cards/tokenize": {
+      "post": {
+        "tags": [
+          "Cards"
+        ],
+        "summary": "Tokenizar cartão (público)",
+        "description": "Endpoint público para tokenização. Envie `public_key` (app_id) ou autenticação opcional para usar a chave pública do site.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "public_key": {
+                    "type": "string"
+                  },
+                  "card": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "string"
+                      },
+                      "holder_name": {
+                        "type": "string"
+                      },
+                      "exp_month": {
+                        "type": "integer"
+                      },
+                      "exp_year": {
+                        "type": "integer"
+                      },
+                      "cvv": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "number",
+                      "holder_name",
+                      "exp_month",
+                      "exp_year",
+                      "cvv"
+                    ]
+                  },
+                  "number": {
+                    "type": "string"
+                  },
+                  "holder_name": {
+                    "type": "string"
+                  },
+                  "exp_month": {
+                    "type": "integer"
+                  },
+                  "exp_year": {
+                    "type": "integer"
+                  },
+                  "cvv": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "public_key"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "token": {
+                      "type": "string"
+                    },
+                    "card_token": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "card": {
+                      "type": "object",
+                      "properties": {
+                        "brand": {
+                          "type": "string"
+                        },
+                        "last4": {
+                          "type": "string"
+                        },
+                        "exp_month": {
+                          "type": "integer"
+                        },
+                        "exp_year": {
+                          "type": "integer"
+                        },
+                        "holder_name": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação"
+          },
+          "409": {
+            "description": "Conta Pagar.me não configurada"
+          }
+        }
+      }
+    },
+    "/api/v1/cards/quote": {
+      "get": {
+        "tags": [
+          "Cards"
+        ],
+        "summary": "Cotação de parcelas por BIN/valor",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "amount_cents",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "name": "bin",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "max_installments",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "free_installments",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "interest_rate",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          {
+            "name": "min_installment_cents",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "interest_payer",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "merchant",
+                "user"
+              ]
+            }
+          },
+          {
+            "name": "juros",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "C",
+                "V"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "brand": {
+                      "type": "string"
+                    },
+                    "brand_icon": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "interest_payer": {
+                      "type": "string",
+                      "enum": [
+                        "merchant",
+                        "user"
+                      ]
+                    },
+                    "installments": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CardInstallment"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação"
+          }
+        }
+      }
+    },
+    "/api/v1/cards/quote/installment": {
+      "get": {
+        "tags": [
+          "Cards"
+        ],
+        "summary": "Cotação de uma parcela específica",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "amount_cents",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "name": "bin",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "name": "n",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "name": "max_installments",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "free_installments",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "interest_rate",
+            "in": "query",
+            "schema": {
+              "type": "number",
+              "format": "float"
+            }
+          },
+          {
+            "name": "min_installment_cents",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "interest_payer",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "merchant",
+                "user"
+              ]
+            }
+          },
+          {
+            "name": "juros",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "C",
+                "V"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "brand": {
+                      "type": "string"
+                    },
+                    "brand_icon": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "interest_payer": {
+                      "type": "string"
+                    },
+                    "installment": {
+                      "$ref": "#/components/schemas/CardInstallment"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Parcela não disponível"
+          },
+          "422": {
+            "description": "Validação"
+          }
+        }
+      }
+    },
+    "/api/v1/cards/brand": {
+      "get": {
+        "tags": [
+          "Cards"
+        ],
+        "summary": "Detecta bandeira do cartão por BIN",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "XClientId": [],
+            "XClientSecret": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "bin",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "string"
+                    },
+                    "brand": {
+                      "type": "string"
+                    },
+                    "brand_icon": {
+                      "type": "string",
+                      "format": "uri"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validação"
+          }
+        }
+      }
+    }
+  }
+}

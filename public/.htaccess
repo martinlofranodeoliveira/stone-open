@@ -1,0 +1,35 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  DirectoryIndex index.php
+
+  # Preserve Authorization header for PHP (often stripped by proxies/CGI)
+  RewriteCond %{HTTP:Authorization} .
+  RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+  # Expose custom auth headers to PHP via $_SERVER
+  RewriteRule .* - [E=HTTP_X_CLIENT_ID:%{HTTP:X-Client-Id},E=HTTP_X_CLIENT_SECRET:%{HTTP:X-Client-Secret}]
+
+  # Public notification endpoint (bypass front controller)
+  RewriteRule ^notificacao/?$ notificacao/index.php [L]
+  RewriteRule ^notificacao/ - [L]
+
+  # Front controller: send all non-file, non-dir to index.php
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^ index.php [L]
+</IfModule>
+
+<IfModule mod_setenvif.c>
+  # Alternative approach for environments where Rewrite is not applied
+  SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
+  SetEnvIfNoCase ^X-Client-Id$ "(.+)" HTTP_X_CLIENT_ID=$1
+  SetEnvIfNoCase ^X-Client-Secret$ "(.+)" HTTP_X_CLIENT_SECRET=$1
+</IfModule>
+
+# Security hardening: deny access to sensitive files by default
+<FilesMatch "\.(env|sql|ini|log|sh|bak|swp)$">
+  Require all denied
+</FilesMatch>
+
+# Disable directory listing
+Options -Indexes
