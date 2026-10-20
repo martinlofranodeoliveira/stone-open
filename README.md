@@ -35,6 +35,25 @@ $redacted = SafeLogContext::redact($context);
 
 Limites: o exemplo usa apenas valores ficticios. O auxiliar nao promete anonimizacao completa; revise as chaves registradas antes de gravar logs e valide a integracao propria separadamente. Regressao pura em `lab_tests/safe_log_context.php` via `php -n lab_tests/safe_log_context.php`.
 
+## Exportação CSV segura contra fórmulas
+
+O auxiliar puro `App\\Support\\CsvFormulaGuard::protect(string)` prefixa exatamente um apóstrofo ASCII (`'`) antes de todos os bytes originais quando o texto, após pular espaços ASCII `0x20` iniciais, remover no máximo um BOM UTF-8 `EF BB BF` e pular espaços novamente, começa com `=`, `+`, `-`, `@`, TAB, CR, LF ou variantes fullwidth `＝＋－＠`. Todo o resto permanece byte a byte; o apóstrofo faz parte do dado exportado.
+
+Exemplo sintético em memória (sem dados reais):
+
+```php
+use App\\Infrastructure\\Http\\Response;
+
+$rows = [['name' => '=1+1', 'balance' => -42, 'code' => '-42']];
+$columns = ['name' => 'Name', 'balance' => 'Balance', 'code' => 'Code'];
+$safe = Response::csv($rows, $columns);
+$raw = Response::csv($rows, $columns, 'export.csv', false);
+```
+
+Por padrão (`spreadsheetSafe=true`), rótulos STRING e células cuja entrada original é STRING recebem a proteção; os 15 fluxos atuais herdam esse padrão sem editar controladores. Com opt-out explícito `false`, as strings originais são exportadas sem apóstrofo, útil para consumidor programático que lê CSV como texto. A string `"-42"` é texto literal protegido (`"'-42"`), enquanto o número `-42` (`int`/`float`) mantém seu cast para string sem prefixo; `true` vira `"1"`, `false` vira `""`, e `null`/ausente/arrays mantêm o `json_encode(..., JSON_UNESCAPED_UNICODE)` anterior, sem alterar projeção/ordem de colunas.
+
+Limites: os roteiros não executam planilhas nem ações financeiras. O modo não promete anonimização, proteção universal entre planilhas nem segurança depois de salvar/reabrir; clientes podem reinterpretar dados. XLS/JSON, nomes de arquivo e regras de autorização não ganham garantias novas. Regressão pura em `lab_tests/csv_formula_guard.php` via `php -n lab_tests/csv_formula_guard.php`.
+
 ## Conteúdo excluído e licenças
 
 Excluídos: `.env`, logs, storage/cache da operação, Postman credenciado, webhook capturado, documentação operacional/deploy e marcas de cartão sem licença estabelecida. Ícones genéricos substituem essas marcas; as bibliotecas frontend vendorizadas continuam incluídas com suas licenças preservadas. A edição não contém histórico Git privado.

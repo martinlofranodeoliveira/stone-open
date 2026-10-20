@@ -50,18 +50,33 @@ final class Response
         return implode(' – ', $out);
     }
 
-    public static function csv(array $rows, array $columns, string $filename = 'export.csv'): self
+    public static function csv(array $rows, array $columns, string $filename = 'export.csv', bool $spreadsheetSafe = true): self
     {
         $fh = fopen('php://temp', 'r+');
         // Header
-        fputcsv($fh, array_values($columns));
+        $header = array_values($columns);
+        if ($spreadsheetSafe) {
+            foreach ($header as $i => $label) {
+                if (is_string($label)) {
+                    $header[$i] = \App\Support\CsvFormulaGuard::protect($label);
+                }
+            }
+        }
+        fputcsv($fh, $header, ',', '"', '');
         foreach ($rows as $row) {
             $line = [];
             foreach (array_keys($columns) as $key) {
-                $line[] = is_scalar($row[$key] ?? null) ? (string)$row[$key] : json_encode($row[$key] ?? null, JSON_UNESCAPED_UNICODE);
+                $raw = $row[$key] ?? null;
+                if (is_string($raw)) {
+                    $line[] = $spreadsheetSafe ? \App\Support\CsvFormulaGuard::protect($raw) : $raw;
+                } elseif (is_scalar($raw)) {
+                    $line[] = (string)$raw;
+                } else {
+                    $line[] = json_encode($raw, JSON_UNESCAPED_UNICODE);
+                }
             }
-            fputcsv($fh, $line);
-        }
+            fputcsv($fh, $line, ',', '"', '');
+       }
         rewind($fh);
         $csv = stream_get_contents($fh) ?: '';
         fclose($fh);
