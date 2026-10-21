@@ -122,3 +122,69 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_plan_interval_tag.php`.
+
+
+<!-- community-core:payment-status-tag -->
+### Canonical payment status tag for offline checks
+
+Gives admin payments, invoices, subscriptions and API list offline checks a shared deterministic way to normalize multilingual status request fields to canonical payment tags and outcome categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/payment_status_tag.php`, API `App\Support\Community\PaymentStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from payment status request to canonical status tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field s0 is payload.status when payload.status is a string, else payload.situacao when payload.situacao is a string, else payload.payment_status when payload.payment_status is a string, else missing. status_source is status when s0 came from payload.status, situacao when from payload.situacao, payment_status when from payload.payment_status, else none. has_status is true when s0 is present as string else false. raw is s0 when has_status else empty string. normalized is pending when raw equals pending or pendente, paid when raw equals paid or pago or paga, failed when raw equals failed or falha, refunded when raw equals refunded or reembolsado, canceled when raw equals canceled or cancelled or cancelado, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is open when normalized is pending, success when normalized is paid, failure when normalized is failed, reversal when normalized is refunded or normalized is canceled, else unknown. is_terminal is true when normalized is paid or failed or refunded or canceled else false. is_success is true when normalized is paid else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of pending, paid, failed, refunded, canceled or unknown, status_source one of status, situacao, payment_status or none, has_status boolean, category one of open, success, failure, reversal or unknown, is_terminal boolean, is_success boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "status": "paid"
+  },
+  "output": {
+    "category": "success",
+    "has_status": true,
+    "is_known": true,
+    "is_success": true,
+    "is_terminal": true,
+    "normalized": "paid",
+    "raw": "paid",
+    "status_source": "status"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "situacao": "pendente"
+  },
+  "output": {
+    "category": "open",
+    "has_status": true,
+    "is_known": true,
+    "is_success": false,
+    "is_terminal": false,
+    "normalized": "pending",
+    "raw": "pendente",
+    "status_source": "situacao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_status": false,
+    "is_known": false,
+    "is_success": false,
+    "is_terminal": false,
+    "normalized": "unknown",
+    "raw": "",
+    "status_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_payment_status_tag.php`.
