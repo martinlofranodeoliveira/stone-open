@@ -59,3 +59,66 @@ Limites: os roteiros não executam planilhas nem ações financeiras. O modo nã
 Excluídos: `.env`, logs, storage/cache da operação, Postman credenciado, webhook capturado, documentação operacional/deploy e marcas de cartão sem licença estabelecida. Ícones genéricos substituem essas marcas; as bibliotecas frontend vendorizadas continuam incluídas com suas licenças preservadas. A edição não contém histórico Git privado.
 
 Código de titularidade autorizada sob MIT. Consulte `LICENSE`, `LICENSES/` e `THIRD_PARTY_NOTICES.md` para direitos de terceiros.
+
+
+<!-- community-core:plan-interval-tag -->
+### Canonical plan interval tag for offline checks
+
+Gives admin plans, subscriptions, invoices and API list offline checks a shared deterministic way to normalize multilingual interval request fields to canonical recurrence tags and cycle lengths without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/plan_interval_tag.php`, API `App\Support\Community\PlanIntervalTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from plan interval request to canonical interval tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and integer assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field i0 is payload.interval when payload.interval is a string, else payload.periodo when payload.periodo is a string, else payload.billing_interval when payload.billing_interval is a string, else missing. interval_source is interval when i0 came from payload.interval, periodo when from payload.periodo, billing_interval when from payload.billing_interval, else none. has_interval is true when i0 is present as string else false. raw is i0 when has_interval else empty string. normalized is daily when raw equals daily or diaria, weekly when raw equals weekly or semanal, monthly when raw equals monthly or mensal, yearly when raw equals yearly or anual or annual, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. cycle_days is 1 when normalized is daily, 7 when weekly, 30 when monthly, 365 when yearly, else 0. category is short when normalized is daily or weekly, standard when monthly, long when yearly, else unknown. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of daily, weekly, monthly, yearly or unknown, interval_source one of interval, periodo, billing_interval or none, has_interval boolean, cycle_days one of 0, 1, 7, 30 or 365, category one of short, standard, long or unknown, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "interval": "monthly"
+  },
+  "output": {
+    "category": "standard",
+    "cycle_days": 30,
+    "has_interval": true,
+    "interval_source": "interval",
+    "is_known": true,
+    "normalized": "monthly",
+    "raw": "monthly"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "periodo": "semanal"
+  },
+  "output": {
+    "category": "short",
+    "cycle_days": 7,
+    "has_interval": true,
+    "interval_source": "periodo",
+    "is_known": true,
+    "normalized": "weekly",
+    "raw": "semanal"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "cycle_days": 0,
+    "has_interval": false,
+    "interval_source": "none",
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_plan_interval_tag.php`.
