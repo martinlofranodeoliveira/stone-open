@@ -281,3 +281,69 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_admin_list_window.php`.
+
+
+<!-- community-core:subscription-status-tag -->
+### Canonical subscription status tag for offline checks
+
+Gives admin subscriptions, invoices, plans and API list offline checks a shared deterministic way to normalize multilingual subscription status request fields to canonical lifecycle tags and handling categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/subscription_status_tag.php`, API `App\Support\Community\SubscriptionStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/subscription_status_tag.php`, API `App\Support\Community\SubscriptionStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from subscription status request to canonical status tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field s0 is payload.status when payload.status is a string, else payload.situacao when payload.situacao is a string, else payload.subscription_status when payload.subscription_status is a string, else missing. status_source is status when s0 came from payload.status, situacao when from payload.situacao, subscription_status when from payload.subscription_status, else none. has_status is true when s0 is present as string else false. raw is s0 when has_status else empty string. normalized is active when raw equals active or ativo or ativa, trialing when raw equals trialing or trial or teste or em_teste, past_due when raw equals past_due or inadimplente or atrasado, suspended when raw equals suspended or suspenso or suspensa, canceled when raw equals canceled or cancelled or cancelado or cancelada, expired when raw equals expired or expirado or expirada, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is current when normalized is active or normalized is trialing, attention when normalized is past_due or normalized is suspended, ended when normalized is canceled or normalized is expired, else unknown. is_active is true when normalized is active else false. is_ended is true when normalized is canceled or normalized is expired else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of active, trialing, past_due, suspended, canceled, expired or unknown, status_source one of status, situacao, subscription_status or none, has_status boolean, category one of current, attention, ended or unknown, is_active boolean, is_ended boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "status": "active"
+  },
+  "output": {
+    "category": "current",
+    "has_status": true,
+    "is_active": true,
+    "is_ended": false,
+    "is_known": true,
+    "normalized": "active",
+    "raw": "active",
+    "status_source": "status"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "situacao": "inadimplente"
+  },
+  "output": {
+    "category": "attention",
+    "has_status": true,
+    "is_active": false,
+    "is_ended": false,
+    "is_known": true,
+    "normalized": "past_due",
+    "raw": "inadimplente",
+    "status_source": "situacao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_status": false,
+    "is_active": false,
+    "is_ended": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "status_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_subscription_status_tag.php`.
