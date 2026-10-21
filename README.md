@@ -188,3 +188,96 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_payment_status_tag.php`.
+
+
+<!-- community-core:admin-list-window -->
+### Canonical admin list window for offline checks
+
+Gives admin customers, payments, invoices, subscriptions, sites, users and API list offline checks a shared deterministic way to normalize pagination and sort request fields to a bounded window without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_list_window.php`, API `App\Support\Community\AdminListWindow\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_list_window.php`, API `App\Support\Community\AdminListWindow\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from list window request to bounded window with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, integer comparisons, integer arithmetic and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field p0 is payload.page when payload.page is an integer, else payload.pagina when payload.pagina is an integer, else missing. page_source is page when p0 came from payload.page, pagina when from payload.pagina, else none. has_page is true when p0 is present as integer else false. page is 1 when missing, else 1 when p0 is less than 1, else 1000 when p0 is greater than 1000, else p0. Field pp0 is payload.per_page when payload.per_page is an integer, else payload.por_pagina when payload.por_pagina is an integer, else missing. per_page_source is per_page when pp0 came from payload.per_page, por_pagina when from payload.por_pagina, else none. has_per_page is true when pp0 is present as integer else false. per_page is 20 when missing, else 1 when pp0 is less than 1, else 100 when pp0 is greater than 100, else pp0. Field s0 is payload.sort when payload.sort is a string, else payload.ordenacao when payload.ordenacao is a string, else missing. sort_source is sort when s0 came from payload.sort, ordenacao when from payload.ordenacao, else none. has_sort is true when s0 is present as string else false. raw_sort is s0 when has_sort else empty string. sort is created_at when raw_sort equals created_at or criado_em, amount when raw_sort equals amount or valor, status when raw_sort equals status or situacao, else created_at. Matching is exact case-sensitive with no trimming, folding or pattern calls. Field d0 is payload.direction when payload.direction is a string, else payload.direcao when payload.direcao is a string, else missing. direction_source is direction when d0 came from payload.direction, direcao when from payload.direcao, else none. has_direction is true when d0 is present as string else false. raw_direction is d0 when has_direction else empty string. direction is asc when raw_direction equals asc or crescente, desc when raw_direction equals desc or decrescente, else desc. Matching is exact case-sensitive with no trimming, folding or pattern calls. offset is (page minus 1) multiplied by per_page. Output is an object with page integer 1 to 1000, per_page integer 1 to 100, offset integer 0 to 99900, sort one of created_at, amount or status, sort_source one of sort, ordenacao or none, has_sort boolean, raw_sort string, direction one of asc or desc, direction_source one of direction, direcao or none, has_direction boolean, raw_direction string, page_source one of page, pagina or none, has_page boolean, per_page_source one of per_page, por_pagina or none, and has_per_page boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "direction": "asc",
+    "page": 2,
+    "per_page": 10,
+    "sort": "amount"
+  },
+  "output": {
+    "direction": "asc",
+    "direction_source": "direction",
+    "has_direction": true,
+    "has_page": true,
+    "has_per_page": true,
+    "has_sort": true,
+    "offset": 10,
+    "page": 2,
+    "page_source": "page",
+    "per_page": 10,
+    "per_page_source": "per_page",
+    "raw_direction": "asc",
+    "raw_sort": "amount",
+    "sort": "amount",
+    "sort_source": "sort"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "direcao": "crescente",
+    "ordenacao": "criado_em",
+    "pagina": 5,
+    "por_pagina": 50
+  },
+  "output": {
+    "direction": "asc",
+    "direction_source": "direcao",
+    "has_direction": true,
+    "has_page": true,
+    "has_per_page": true,
+    "has_sort": true,
+    "offset": 200,
+    "page": 5,
+    "page_source": "pagina",
+    "per_page": 50,
+    "per_page_source": "por_pagina",
+    "raw_direction": "crescente",
+    "raw_sort": "criado_em",
+    "sort": "created_at",
+    "sort_source": "ordenacao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "direction": "desc",
+    "direction_source": "none",
+    "has_direction": false,
+    "has_page": false,
+    "has_per_page": false,
+    "has_sort": false,
+    "offset": 0,
+    "page": 1,
+    "page_source": "none",
+    "per_page": 20,
+    "per_page_source": "none",
+    "raw_direction": "",
+    "raw_sort": "",
+    "sort": "created_at",
+    "sort_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_admin_list_window.php`.
