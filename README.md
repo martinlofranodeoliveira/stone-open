@@ -602,3 +602,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_customer_document_tag.php`.
+
+
+<!-- community-core:environment-tag -->
+### Canonical account environment tag for offline checks
+
+Gives admin sites, accounts, diagnostics and API query offline checks a shared deterministic way to normalize multilingual account environment request fields to canonical environment tags and live categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/environment_tag.php`, API `App\Support\Community\EnvironmentTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/environment_tag.php`, API `App\Support\Community\EnvironmentTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from account environment request to canonical environment tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field e0 is payload.environment when payload.environment is a string, else payload.ambiente when payload.ambiente is a string, else payload.account_mode when payload.account_mode is a string, else missing. environment_source is environment when e0 came from payload.environment, ambiente when from payload.ambiente, account_mode when from payload.account_mode, else none. has_environment is true when e0 is present as string else false. raw is e0 when has_environment else empty string. normalized is test when raw equals test or teste or sandbox or homologacao, live when raw equals live or production or producao, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is non_live when normalized is test, live when normalized is live, else unknown. is_live is true when normalized is live else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of test, live or unknown, environment_source one of environment, ambiente, account_mode or none, has_environment boolean, category one of non_live, live or unknown, is_live boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "environment": "sandbox"
+  },
+  "output": {
+    "category": "non_live",
+    "environment_source": "environment",
+    "has_environment": true,
+    "is_known": true,
+    "is_live": false,
+    "normalized": "test",
+    "raw": "sandbox"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "ambiente": "producao"
+  },
+  "output": {
+    "category": "live",
+    "environment_source": "ambiente",
+    "has_environment": true,
+    "is_known": true,
+    "is_live": true,
+    "normalized": "live",
+    "raw": "producao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "environment_source": "none",
+    "has_environment": false,
+    "is_known": false,
+    "is_live": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_environment_tag.php`.
