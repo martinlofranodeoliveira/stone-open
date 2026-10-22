@@ -413,3 +413,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_payment_method_tag.php`.
+
+
+<!-- community-core:list-sort-tag -->
+### Canonical list sort tag for offline checks
+
+Gives admin payments, customers, invoices, subscriptions and API list offline checks a shared deterministic way to normalize multilingual sort request fields to canonical list sort tags and field/direction categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/list_sort_tag.php`, API `App\Support\Community\ListSortTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/list_sort_tag.php`, API `App\Support\Community\ListSortTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from list sort request to canonical sort tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field s0 is payload.sort when payload.sort is a string, else payload.ordenacao when payload.ordenacao is a string, else payload.order_by when payload.order_by is a string, else missing. sort_source is sort when s0 came from payload.sort, ordenacao when from payload.ordenacao, order_by when from payload.order_by, else none. has_sort is true when s0 is present as string else false. raw is s0 when has_sort else empty string. normalized is recent when raw equals recent or recentes or newest, oldest when raw equals oldest or mais_antigos, amount_high when raw equals amount_desc or valor_desc or maior_valor, amount_low when raw equals amount_asc or valor_asc or menor_valor, name_az when raw equals name_asc or nome_asc or nome_az, name_za when raw equals name_desc or nome_desc or nome_za, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. field is date when normalized is recent or normalized is oldest, amount when normalized is amount_high or normalized is amount_low, name when normalized is name_az or normalized is name_za, else unknown. direction is descending when normalized is recent or normalized is amount_high or normalized is name_za, ascending when normalized is oldest or normalized is amount_low or normalized is name_az, else unknown. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of recent, oldest, amount_high, amount_low, name_az, name_za or unknown, sort_source one of sort, ordenacao, order_by or none, has_sort boolean, field one of date, amount, name or unknown, direction one of descending, ascending or unknown, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not paginate, redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "sort": "recent"
+  },
+  "output": {
+    "direction": "descending",
+    "field": "date",
+    "has_sort": true,
+    "is_known": true,
+    "normalized": "recent",
+    "raw": "recent",
+    "sort_source": "sort"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "ordenacao": "valor_desc"
+  },
+  "output": {
+    "direction": "descending",
+    "field": "amount",
+    "has_sort": true,
+    "is_known": true,
+    "normalized": "amount_high",
+    "raw": "valor_desc",
+    "sort_source": "ordenacao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "direction": "unknown",
+    "field": "unknown",
+    "has_sort": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "sort_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_list_sort_tag.php`.
