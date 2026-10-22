@@ -476,3 +476,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_list_sort_tag.php`.
+
+
+<!-- community-core:user-role-tag -->
+### Canonical user role tag for offline checks
+
+Gives admin users, auth, access logs and API list offline checks a shared deterministic way to normalize multilingual role request fields to canonical user role tags and privilege categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/user_role_tag.php`, API `App\Support\Community\UserRoleTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/user_role_tag.php`, API `App\Support\Community\UserRoleTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from user role request to canonical role tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field r0 is payload.role when payload.role is a string, else payload.papel when payload.papel is a string, else payload.user_role when payload.user_role is a string, else missing. role_source is role when r0 came from payload.role, papel when from payload.papel, user_role when from payload.user_role, else none. has_role is true when r0 is present as string else false. raw is r0 when has_role else empty string. normalized is admin when raw equals admin or administrador, manager when raw equals manager or gerente, operator when raw equals operator or operador, viewer when raw equals viewer or leitor or visualizador, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is full when normalized is admin, elevated when normalized is manager, operational when normalized is operator, readonly when normalized is viewer, else unknown. is_privileged is true when normalized is admin or normalized is manager else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of admin, manager, operator, viewer or unknown, role_source one of role, papel, user_role or none, has_role boolean, category one of full, elevated, operational, readonly or unknown, is_privileged boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not paginate, redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "role": "admin"
+  },
+  "output": {
+    "category": "full",
+    "has_role": true,
+    "is_known": true,
+    "is_privileged": true,
+    "normalized": "admin",
+    "raw": "admin",
+    "role_source": "role"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "papel": "operador"
+  },
+  "output": {
+    "category": "operational",
+    "has_role": true,
+    "is_known": true,
+    "is_privileged": false,
+    "normalized": "operator",
+    "raw": "operador",
+    "role_source": "papel"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_role": false,
+    "is_known": false,
+    "is_privileged": false,
+    "normalized": "unknown",
+    "raw": "",
+    "role_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_user_role_tag.php`.
