@@ -539,3 +539,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_user_role_tag.php`.
+
+
+<!-- community-core:customer-document-tag -->
+### Canonical customer document tag for offline checks
+
+Gives admin customers, verification, reports and API query offline checks a shared deterministic way to normalize multilingual document request fields to canonical customer document tags and holder categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/customer_document_tag.php`, API `App\Support\Community\CustomerDocumentTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/customer_document_tag.php`, API `App\Support\Community\CustomerDocumentTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from customer document request to canonical document tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field d0 is payload.document when payload.document is a string, else payload.documento when payload.documento is a string, else payload.customer_document when payload.customer_document is a string, else missing. document_source is document when d0 came from payload.document, documento when from payload.documento, customer_document when from payload.customer_document, else none. has_document is true when d0 is present as string else false. raw is d0 when has_document else empty string. normalized is cpf when raw equals cpf or CPF, cnpj when raw equals cnpj or CNPJ, passport when raw equals passport or passaporte, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is individual when normalized is cpf, company when normalized is cnpj, foreign when normalized is passport, else unknown. is_brazilian is true when normalized is cpf or normalized is cnpj else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of cpf, cnpj, passport or unknown, document_source one of document, documento, customer_document or none, has_document boolean, category one of individual, company, foreign or unknown, is_brazilian boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not validate document numbers, verify identity, redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "document": "cpf"
+  },
+  "output": {
+    "category": "individual",
+    "document_source": "document",
+    "has_document": true,
+    "is_brazilian": true,
+    "is_known": true,
+    "normalized": "cpf",
+    "raw": "cpf"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "documento": "passaporte"
+  },
+  "output": {
+    "category": "foreign",
+    "document_source": "documento",
+    "has_document": true,
+    "is_brazilian": false,
+    "is_known": true,
+    "normalized": "passport",
+    "raw": "passaporte"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "document_source": "none",
+    "has_document": false,
+    "is_brazilian": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_customer_document_tag.php`.
