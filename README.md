@@ -347,3 +347,69 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_subscription_status_tag.php`.
+
+
+<!-- community-core:payment-method-tag -->
+### Canonical payment method tag for offline checks
+
+Gives admin payments, payment links, invoices and API query offline checks a shared deterministic way to normalize multilingual method request fields to canonical payment method tags and handling categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/payment_method_tag.php`, API `App\Support\Community\PaymentMethodTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/payment_method_tag.php`, API `App\Support\Community\PaymentMethodTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from payment method request to canonical method tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field m0 is payload.method when payload.method is a string, else payload.metodo when payload.metodo is a string, else payload.payment_method when payload.payment_method is a string, else missing. method_source is method when m0 came from payload.method, metodo when from payload.metodo, payment_method when from payload.payment_method, else none. has_method is true when m0 is present as string else false. raw is m0 when has_method else empty string. normalized is pix when raw equals pix, card when raw equals card or cartao, boleto when raw equals boleto or bank_slip, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is instant when normalized is pix, card when normalized is card, slip when normalized is boleto, else unknown. is_card is true when normalized is card else false. is_instant is true when normalized is pix else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of pix, card, boleto or unknown, method_source one of method, metodo, payment_method or none, has_method boolean, category one of instant, card, slip or unknown, is_card boolean, is_instant boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "method": "pix"
+  },
+  "output": {
+    "category": "instant",
+    "has_method": true,
+    "is_card": false,
+    "is_instant": true,
+    "is_known": true,
+    "method_source": "method",
+    "normalized": "pix",
+    "raw": "pix"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "metodo": "cartao"
+  },
+  "output": {
+    "category": "card",
+    "has_method": true,
+    "is_card": true,
+    "is_instant": false,
+    "is_known": true,
+    "method_source": "metodo",
+    "normalized": "card",
+    "raw": "cartao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_method": false,
+    "is_card": false,
+    "is_instant": false,
+    "is_known": false,
+    "method_source": "none",
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_payment_method_tag.php`.
