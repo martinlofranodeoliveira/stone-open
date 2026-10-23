@@ -1409,3 +1409,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_customer_status_tag.php`.
+
+
+<!-- community-core:invoice-kind-tag -->
+### Canonical invoice kind tag for offline checks
+
+Gives admin invoices, verify invoices, reports and API queries offline checks a shared deterministic way to normalize multilingual invoice kind request fields to canonical kind tags and recurrence categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/invoice_kind_tag.php`, API `App\Support\Community\InvoiceKindTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/invoice_kind_tag.php`, API `App\Support\Community\InvoiceKindTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from invoice kind request to canonical kind tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field k0 is payload.kind when payload.kind is a string, else payload.tipo when payload.tipo is a string, else payload.invoice_kind when payload.invoice_kind is a string, else missing. kind_source is kind when k0 came from payload.kind, tipo when from payload.tipo, invoice_kind when from payload.invoice_kind, else none. has_kind is true when k0 is present as string else false. raw is k0 when has_kind else empty string. normalized is single when raw equals single or avulsa or avulso, recurring when raw equals recurring or recorrente or recorrencia, subscription when raw equals subscription or assinatura or assinaturas, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is once when normalized is single, cycle when normalized is recurring or normalized is subscription, else unknown. is_recurring is true when normalized is recurring or subscription else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of single, recurring, subscription or unknown, kind_source one of kind, tipo, invoice_kind or none, has_kind boolean, category one of once, cycle or unknown, is_recurring boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "kind": "avulsa"
+  },
+  "output": {
+    "category": "once",
+    "has_kind": true,
+    "is_known": true,
+    "is_recurring": false,
+    "kind_source": "kind",
+    "normalized": "single",
+    "raw": "avulsa"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "tipo": "assinatura"
+  },
+  "output": {
+    "category": "cycle",
+    "has_kind": true,
+    "is_known": true,
+    "is_recurring": true,
+    "kind_source": "tipo",
+    "normalized": "subscription",
+    "raw": "assinatura"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_kind": false,
+    "is_known": false,
+    "is_recurring": false,
+    "kind_source": "none",
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_invoice_kind_tag.php`.
