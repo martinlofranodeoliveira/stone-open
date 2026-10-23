@@ -1034,3 +1034,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_account_provider_tag.php`.
+
+
+<!-- community-core:forward-outcome-tag -->
+### Canonical forward outcome tag for offline checks
+
+Gives admin forward logs, retry, webhooks and diagnostics offline checks a shared deterministic way to normalize multilingual forward outcome request fields to canonical delivery tags and handling categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/forward_outcome_tag.php`, API `App\Support\Community\ForwardOutcomeTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/forward_outcome_tag.php`, API `App\\Support\\Community\\ForwardOutcomeTag\\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from forward outcome request to canonical outcome tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \\stdClass, \\InvalidArgumentException, \\TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field f0 is payload.outcome when payload.outcome is a string, else payload.resultado when payload.resultado is a string, else payload.forward_status when payload.forward_status is a string, else missing. outcome_source is outcome when f0 came from payload.outcome, resultado when from payload.resultado, forward_status when from payload.forward_status, else none. has_outcome is true when f0 is present as string else false. raw is f0 when has_outcome else empty string. normalized is delivered when raw equals delivered or entregue, pending when raw equals pending or pendente, failed when raw equals failed or falha, retrying when raw equals retrying or retry or tentando_novamente, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is success when normalized is delivered, open when normalized is pending or normalized is retrying, failure when normalized is failed, else unknown. is_terminal is true when normalized is delivered or normalized is failed else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of delivered, pending, failed, retrying or unknown, outcome_source one of outcome, resultado, forward_status or none, has_outcome boolean, category one of success, open, failure or unknown, is_terminal boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "outcome": "delivered"
+  },
+  "output": {
+    "category": "success",
+    "has_outcome": true,
+    "is_known": true,
+    "is_terminal": true,
+    "normalized": "delivered",
+    "outcome_source": "outcome",
+    "raw": "delivered"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "resultado": "pendente"
+  },
+  "output": {
+    "category": "open",
+    "has_outcome": true,
+    "is_known": true,
+    "is_terminal": false,
+    "normalized": "pending",
+    "outcome_source": "resultado",
+    "raw": "pendente"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_outcome": false,
+    "is_known": false,
+    "is_terminal": false,
+    "normalized": "unknown",
+    "outcome_source": "none",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_forward_outcome_tag.php`.
