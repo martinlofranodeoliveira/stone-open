@@ -1346,3 +1346,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_admin_task_tag.php`.
+
+
+<!-- community-core:customer-status-tag -->
+### Canonical customer status tag for offline checks
+
+Gives admin customers, API customers, reports and verify offline checks a shared deterministic way to normalize multilingual customer status request fields to canonical customer tags and lifecycle categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/customer_status_tag.php`, API `App\Support\Community\CustomerStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/customer_status_tag.php`, API `App\Support\Community\CustomerStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from customer status request to canonical customer tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field c0 is payload.status when payload.status is a string, else payload.situacao when payload.situacao is a string, else payload.customer_status when payload.customer_status is a string, else missing. status_source is status when c0 came from payload.status, situacao when from payload.situacao, customer_status when from payload.customer_status, else none. has_status is true when c0 is present as string else false. raw is c0 when has_status else empty string. normalized is active when raw equals active or ativo, inactive when raw equals inactive or inativo, blocked when raw equals blocked or bloqueado, archived when raw equals archived or arquivado, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is usable when normalized is active, dormant when normalized is inactive, restricted when normalized is blocked, closed when normalized is archived, else unknown. is_active is true when normalized is active else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of active, inactive, blocked, archived or unknown, status_source one of status, situacao, customer_status or none, has_status boolean, category one of usable, dormant, restricted, closed or unknown, is_active boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "status": "active"
+  },
+  "output": {
+    "category": "usable",
+    "has_status": true,
+    "is_active": true,
+    "is_known": true,
+    "normalized": "active",
+    "raw": "active",
+    "status_source": "status"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "situacao": "bloqueado"
+  },
+  "output": {
+    "category": "restricted",
+    "has_status": true,
+    "is_active": false,
+    "is_known": true,
+    "normalized": "blocked",
+    "raw": "bloqueado",
+    "status_source": "situacao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_status": false,
+    "is_active": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "status_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_customer_status_tag.php`.
