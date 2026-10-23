@@ -914,3 +914,63 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_webhook_event_tag.php`.
+
+
+<!-- community-core:verify-target-tag -->
+### Canonical verification target tag for offline checks
+
+Gives admin verify, dashboard and API query offline checks a shared deterministic way to normalize multilingual verification target request fields to canonical verify tags and domain categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/verify_target_tag.php`, API `App\Support\Community\VerifyTargetTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/verify_target_tag.php`, API `App\Support\Community\VerifyTargetTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from verification target request to canonical verify target tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field t0 is payload.target when payload.target is a string, else payload.alvo when payload.alvo is a string, else payload.verify_target when payload.verify_target is a string, else missing. target_source is target when t0 came from payload.target, alvo when from payload.alvo, verify_target when from payload.verify_target, else none. has_target is true when t0 is present as string else false. raw is t0 when has_target else empty string. normalized is payments when raw equals payments or pagamentos or pagamento, invoices when raw equals invoices or invoice or faturas or fatura, subscriptions when raw equals subscriptions or subscription or assinaturas or assinatura, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is transaction when normalized is payments, billing when normalized is invoices, recurring when normalized is subscriptions, else unknown. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of payments, invoices, subscriptions or unknown, target_source one of target, alvo, verify_target or none, has_target boolean, category one of transaction, billing, recurring or unknown, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "target": "payments"
+  },
+  "output": {
+    "category": "transaction",
+    "has_target": true,
+    "is_known": true,
+    "normalized": "payments",
+    "raw": "payments",
+    "target_source": "target"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "alvo": "faturas"
+  },
+  "output": {
+    "category": "billing",
+    "has_target": true,
+    "is_known": true,
+    "normalized": "invoices",
+    "raw": "faturas",
+    "target_source": "alvo"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_target": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "target_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_verify_target_tag.php`.
