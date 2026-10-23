@@ -1157,3 +1157,63 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_card_brand_tag.php`.
+
+
+<!-- community-core:admin-report-tag -->
+### Canonical admin report tag for offline checks
+
+Gives admin reports, accounts reports, metrics and API list offline checks a shared deterministic way to normalize multilingual report request fields to canonical report tags and handling categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_report_tag.php`, API `App\Support\Community\AdminReportTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_report_tag.php`, API `App\\Support\\Community\\AdminReportTag\\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from admin report request to canonical report tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \\stdClass, \\InvalidArgumentException, \\TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field r0 is payload.report when payload.report is a string, else payload.relatorio when payload.relatorio is a string, else payload.report_type when payload.report_type is a string, else missing. report_source is report when r0 came from payload.report, relatorio when from payload.relatorio, report_type when from payload.report_type, else none. has_report is true when r0 is present as string else false. raw is r0 when has_report else empty string. normalized is payments when raw equals payments or pagamentos, subscriptions when raw equals subscriptions or assinaturas, invoices when raw equals invoices or faturas, accounts when raw equals accounts or contas, forwards when raw equals forwards or encaminhamentos, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is financial when normalized is payments or normalized is invoices, recurring when normalized is subscriptions, operational when normalized is accounts or normalized is forwards, else unknown. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of payments, subscriptions, invoices, accounts, forwards or unknown, report_source one of report, relatorio, report_type or none, has_report boolean, category one of financial, recurring, operational or unknown, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "report": "payments"
+  },
+  "output": {
+    "category": "financial",
+    "has_report": true,
+    "is_known": true,
+    "normalized": "payments",
+    "raw": "payments",
+    "report_source": "report"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "relatorio": "assinaturas"
+  },
+  "output": {
+    "category": "recurring",
+    "has_report": true,
+    "is_known": true,
+    "normalized": "subscriptions",
+    "raw": "assinaturas",
+    "report_source": "relatorio"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_report": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "report_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_admin_report_tag.php`.
