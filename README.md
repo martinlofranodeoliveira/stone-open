@@ -974,3 +974,63 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_verify_target_tag.php`.
+
+
+<!-- community-core:account-provider-tag -->
+### Canonical account provider tag for offline checks
+
+Gives admin accounts, sites, diagnostics and API query offline checks a shared deterministic way to normalize multilingual provider request fields to canonical account provider tags and handling categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/account_provider_tag.php`, API `App\Support\Community\AccountProviderTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/account_provider_tag.php`, API `App\Support\Community\AccountProviderTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from account provider request to canonical provider tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field p0 is payload.provider when payload.provider is a string, else payload.provedor when payload.provedor is a string, else payload.account_provider when payload.account_provider is a string, else missing. provider_source is provider when p0 came from payload.provider, provedor when from payload.provedor, account_provider when from payload.account_provider, else none. has_provider is true when p0 is present as string else false. raw is p0 when has_provider else empty string. normalized is stone when raw equals stone or stone_pagamentos, pagarme when raw equals pagarme, manual when raw equals manual or interno, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is external when normalized is stone or normalized is pagarme, internal when normalized is manual, else unknown. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of stone, pagarme, manual or unknown, provider_source one of provider, provedor, account_provider or none, has_provider boolean, category one of external, internal or unknown, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "provider": "stone"
+  },
+  "output": {
+    "category": "external",
+    "has_provider": true,
+    "is_known": true,
+    "normalized": "stone",
+    "provider_source": "provider",
+    "raw": "stone"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "provedor": "interno"
+  },
+  "output": {
+    "category": "internal",
+    "has_provider": true,
+    "is_known": true,
+    "normalized": "manual",
+    "provider_source": "provedor",
+    "raw": "interno"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_provider": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "provider_source": "none",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_account_provider_tag.php`.
