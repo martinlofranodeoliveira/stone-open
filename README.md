@@ -665,3 +665,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_environment_tag.php`.
+
+
+<!-- community-core:export-format-tag -->
+### Canonical export format tag for offline checks
+
+Gives admin reports, payments, invoices, subscriptions and API list offline checks a shared deterministic way to normalize multilingual export format request fields to canonical format tags and content categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/export_format_tag.php`, API `App\Support\Community\ExportFormatTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/export_format_tag.php`, API `App\Support\Community\ExportFormatTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from export format request to canonical export tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field f0 is payload.format when payload.format is a string, else payload.formato when payload.formato is a string, else payload.export_format when payload.export_format is a string, else missing. format_source is format when f0 came from payload.format, formato when from payload.formato, export_format when from payload.export_format, else none. has_format is true when f0 is present as string else false. raw is f0 when has_format else empty string. normalized is csv when raw equals csv, json when raw equals json, xls when raw equals xls or xlsx or excel or planilha, pdf when raw equals pdf, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is tabular when normalized is csv or normalized is xls, structured when normalized is json, document when normalized is pdf, else unknown. is_tabular is true when category is tabular else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of csv, json, xls, pdf or unknown, format_source one of format, formato, export_format or none, has_format boolean, category one of tabular, structured, document or unknown, is_tabular boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "format": "csv"
+  },
+  "output": {
+    "category": "tabular",
+    "format_source": "format",
+    "has_format": true,
+    "is_known": true,
+    "is_tabular": true,
+    "normalized": "csv",
+    "raw": "csv"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "formato": "planilha"
+  },
+  "output": {
+    "category": "tabular",
+    "format_source": "formato",
+    "has_format": true,
+    "is_known": true,
+    "is_tabular": true,
+    "normalized": "xls",
+    "raw": "planilha"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "format_source": "none",
+    "has_format": false,
+    "is_known": false,
+    "is_tabular": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_export_format_tag.php`.
