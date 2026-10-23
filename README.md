@@ -851,3 +851,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_utils_tool_tag.php`.
+
+
+<!-- community-core:webhook-event-tag -->
+### Canonical webhook event tag for offline checks
+
+Gives webhooks, forward logs, subscriptions and API query offline checks a shared deterministic way to normalize multilingual webhook event request fields to canonical event tags and domain categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/webhook_event_tag.php`, API `App\Support\Community\WebhookEventTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/webhook_event_tag.php`, API `App\Support\Community\WebhookEventTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from webhook event request to canonical event tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field e0 is payload.event when payload.event is a string, else payload.evento when payload.evento is a string, else payload.webhook_event when payload.webhook_event is a string, else missing. event_source is event when e0 came from payload.event, evento when from payload.evento, webhook_event when from payload.webhook_event, else none. has_event is true when e0 is present as string else false. raw is e0 when has_event else empty string. normalized is payment_created when raw equals payment_created or pagamento_criado, payment_paid when raw equals payment_paid or pagamento_pago, payment_failed when raw equals payment_failed or pagamento_falhou, subscription_created when raw equals subscription_created or assinatura_criada, subscription_canceled when raw equals subscription_canceled or subscription_cancelled or assinatura_cancelada, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is payment when normalized is payment_created or normalized is payment_paid or normalized is payment_failed, subscription when normalized is subscription_created or normalized is subscription_canceled, else unknown. is_payment is true when category is payment else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of payment_created, payment_paid, payment_failed, subscription_created, subscription_canceled or unknown, event_source one of event, evento, webhook_event or none, has_event boolean, category one of payment, subscription or unknown, is_payment boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "event": "payment_paid"
+  },
+  "output": {
+    "category": "payment",
+    "event_source": "event",
+    "has_event": true,
+    "is_known": true,
+    "is_payment": true,
+    "normalized": "payment_paid",
+    "raw": "payment_paid"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "evento": "assinatura_cancelada"
+  },
+  "output": {
+    "category": "subscription",
+    "event_source": "evento",
+    "has_event": true,
+    "is_known": true,
+    "is_payment": false,
+    "normalized": "subscription_canceled",
+    "raw": "assinatura_cancelada"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "event_source": "none",
+    "has_event": false,
+    "is_known": false,
+    "is_payment": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_webhook_event_tag.php`.
