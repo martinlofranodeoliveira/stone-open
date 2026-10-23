@@ -1217,3 +1217,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_admin_report_tag.php`.
+
+
+<!-- community-core:site-status-tag -->
+### Canonical site status tag for offline checks
+
+Gives admin sites, accounts, users and API list offline checks a shared deterministic way to normalize multilingual site status request fields to canonical site tags and availability categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/site_status_tag.php`, API `App\Support\Community\SiteStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/site_status_tag.php`, API `App\Support\Community\SiteStatusTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from site status request to canonical status tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field s0 is payload.status when payload.status is a string, else payload.situacao when payload.situacao is a string, else payload.site_status when payload.site_status is a string, else missing. site_source is status when s0 came from payload.status, situacao when from payload.situacao, site_status when from payload.site_status, else none. has_site_status is true when s0 is present as string else false. raw is s0 when has_site_status else empty string. normalized is active when raw equals active or ativo or ativa, inactive when raw equals inactive or inativo or inativa, suspended when raw equals suspended or suspenso or suspensa, archived when raw equals archived or arquivado or arquivada, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is live when normalized is active, dormant when normalized is inactive or normalized is archived, blocked when normalized is suspended, else unknown. is_active is true when normalized is active else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of active, inactive, suspended, archived or unknown, site_source one of status, situacao, site_status or none, has_site_status boolean, category one of live, dormant, blocked or unknown, is_active boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "status": "active"
+  },
+  "output": {
+    "category": "live",
+    "has_site_status": true,
+    "is_active": true,
+    "is_known": true,
+    "normalized": "active",
+    "raw": "active",
+    "site_source": "status"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "situacao": "suspensa"
+  },
+  "output": {
+    "category": "blocked",
+    "has_site_status": true,
+    "is_active": false,
+    "is_known": true,
+    "normalized": "suspended",
+    "raw": "suspensa",
+    "site_source": "situacao"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_site_status": false,
+    "is_active": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "site_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_site_status_tag.php`.
