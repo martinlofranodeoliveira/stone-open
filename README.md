@@ -728,3 +728,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_export_format_tag.php`.
+
+
+<!-- community-core:admin-log-action-tag -->
+### Canonical admin log action tag for offline checks
+
+Gives admin access logs, api logs, forward logs and diagnostics offline checks a shared deterministic way to normalize multilingual log action request fields to canonical action tags and review categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_log_action_tag.php`, API `App\Support\Community\AdminLogActionTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_log_action_tag.php`, API `App\Support\Community\AdminLogActionTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from admin log action request to canonical action tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field a0 is payload.action when payload.action is a string, else payload.acao when payload.acao is a string, else payload.log_action when payload.log_action is a string, else missing. action_source is action when a0 came from payload.action, acao when from payload.acao, log_action when from payload.log_action, else none. has_action is true when a0 is present as string else false. raw is a0 when has_action else empty string. normalized is login when raw equals login or entrar, logout when raw equals logout or sair, create when raw equals create or criar, update when raw equals update or atualizar, delete when raw equals delete or excluir, view when raw equals view or visualizar, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is auth when normalized is login or normalized is logout, mutation when normalized is create or normalized is update or normalized is delete, read when normalized is view, else unknown. is_mutating is true when category is mutation else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of login, logout, create, update, delete, view or unknown, action_source one of action, acao, log_action or none, has_action boolean, category one of auth, mutation, read or unknown, is_mutating boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "action": "criar"
+  },
+  "output": {
+    "action_source": "action",
+    "category": "mutation",
+    "has_action": true,
+    "is_known": true,
+    "is_mutating": true,
+    "normalized": "create",
+    "raw": "criar"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "acao": "sair"
+  },
+  "output": {
+    "action_source": "acao",
+    "category": "auth",
+    "has_action": true,
+    "is_known": true,
+    "is_mutating": false,
+    "normalized": "logout",
+    "raw": "sair"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "action_source": "none",
+    "category": "unknown",
+    "has_action": false,
+    "is_known": false,
+    "is_mutating": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_admin_log_action_tag.php`.
