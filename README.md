@@ -1472,3 +1472,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_invoice_kind_tag.php`.
+
+
+<!-- community-core:api-resource-tag -->
+### Canonical API resource tag for offline checks
+
+Gives admin API logs, diagnostics, reports and API routing offline checks a shared deterministic way to normalize multilingual resource request fields to canonical API resource tags and grouping categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/api_resource_tag.php`, API `App\Support\Community\ApiResourceTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/api_resource_tag.php`, API `App\Support\Community\ApiResourceTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from API resource request to canonical resource tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field r0 is payload.resource when payload.resource is a string, else payload.recurso when payload.recurso is a string, else payload.api_resource when payload.api_resource is a string, else missing. resource_source is resource when r0 came from payload.resource, recurso when from payload.recurso, api_resource when from payload.api_resource, else none. has_resource is true when r0 is present as string else false. raw is r0 when has_resource else empty string. normalized is customers when raw equals customers or clientes, plans when raw equals plans or planos, subscriptions when raw equals subscriptions or assinaturas or assinatura, boletos when raw equals boletos or boleto, payment_links when raw equals payment_links or links or links_pagamento, queries when raw equals queries or consultas or consulta, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is directory when normalized is customers or normalized is plans, billing when normalized is subscriptions or normalized is boletos or normalized is payment_links, lookup when normalized is queries, else unknown. is_collection is true when normalized is customers or plans or subscriptions or boletos or payment_links else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of customers, plans, subscriptions, boletos, payment_links, queries or unknown, resource_source one of resource, recurso, api_resource or none, has_resource boolean, category one of directory, billing, lookup or unknown, is_collection boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "resource": "plans"
+  },
+  "output": {
+    "category": "directory",
+    "has_resource": true,
+    "is_collection": true,
+    "is_known": true,
+    "normalized": "plans",
+    "raw": "plans",
+    "resource_source": "resource"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "recurso": "assinaturas"
+  },
+  "output": {
+    "category": "billing",
+    "has_resource": true,
+    "is_collection": true,
+    "is_known": true,
+    "normalized": "subscriptions",
+    "raw": "assinaturas",
+    "resource_source": "recurso"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_resource": false,
+    "is_collection": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": "",
+    "resource_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_api_resource_tag.php`.
