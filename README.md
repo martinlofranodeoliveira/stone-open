@@ -1280,3 +1280,69 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_site_status_tag.php`.
+
+
+<!-- community-core:admin-task-tag -->
+### Canonical admin task tag for offline checks
+
+Gives admin tasks, diagnostics, health and retention offline checks a shared deterministic way to normalize multilingual task request fields to canonical task tags and domain categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_task_tag.php`, API `App\Support\Community\AdminTaskTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/admin_task_tag.php`, API `App\\Support\\Community\\AdminTaskTag\\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from admin task request to canonical task tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \\stdClass, \\InvalidArgumentException, \\TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field t0 is payload.task when payload.task is a string, else payload.tarefa when payload.tarefa is a string, else payload.admin_task when payload.admin_task is a string, else missing. task_source is task when t0 came from payload.task, tarefa when from payload.tarefa, admin_task when from payload.admin_task, else none. has_task is true when t0 is present as string else false. raw is t0 when has_task else empty string. normalized is process_webhooks when raw equals process_webhooks or processar_webhooks, retry_forwards when raw equals retry_forwards or reenviar_forwards, health when raw equals health or saude, diagnostics when raw equals diagnostics or diagnostico, retention when raw equals retention or retencao, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is delivery when normalized is process_webhooks or normalized is retry_forwards, system when normalized is health or normalized is diagnostics, maintenance when normalized is retention, else unknown. is_delivery is true when category is delivery else false. is_system is true when category is system else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of process_webhooks, retry_forwards, health, diagnostics, retention or unknown, task_source one of task, tarefa, admin_task or none, has_task boolean, category one of delivery, system, maintenance or unknown, is_delivery boolean, is_system boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "task": "process_webhooks"
+  },
+  "output": {
+    "category": "delivery",
+    "has_task": true,
+    "is_delivery": true,
+    "is_known": true,
+    "is_system": false,
+    "normalized": "process_webhooks",
+    "raw": "process_webhooks",
+    "task_source": "task"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "tarefa": "diagnostico"
+  },
+  "output": {
+    "category": "system",
+    "has_task": true,
+    "is_delivery": false,
+    "is_known": true,
+    "is_system": true,
+    "normalized": "diagnostics",
+    "raw": "diagnostico",
+    "task_source": "tarefa"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_task": false,
+    "is_delivery": false,
+    "is_known": false,
+    "is_system": false,
+    "normalized": "unknown",
+    "raw": "",
+    "task_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_admin_task_tag.php`.
