@@ -1730,3 +1730,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_auth_outcome_tag.php`.
+
+
+<!-- community-core:currency-tag -->
+### Canonical currency tag for offline checks
+
+Gives admin payments, invoices, plans, subscriptions and API docs offline checks a shared deterministic way to normalize multilingual currency request fields to canonical currency tags and grouping categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/currency_tag.php`, API `App\Support\Community\CurrencyTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/currency_tag.php`, API `App\Support\Community\CurrencyTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from currency request to canonical currency tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field c0 is payload.currency when payload.currency is a string, else payload.moeda when payload.moeda is a string, else payload.currency_code when payload.currency_code is a string, else missing. currency_source is currency when c0 came from payload.currency, moeda when from payload.moeda, currency_code when from payload.currency_code, else none. has_currency is true when c0 is present as string else false. raw is c0 when has_currency else empty string. normalized is brl when raw equals brl or real or reais, usd when raw equals usd or dolar or dollar, eur when raw equals eur or euro, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is domestic when normalized is brl, international when normalized is usd or normalized is eur, else unknown. is_domestic is true when normalized is brl else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of brl, usd, eur or unknown, currency_source one of currency, moeda, currency_code or none, has_currency boolean, category one of domestic, international or unknown, is_domestic boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "currency": "brl"
+  },
+  "output": {
+    "category": "domestic",
+    "currency_source": "currency",
+    "has_currency": true,
+    "is_domestic": true,
+    "is_known": true,
+    "normalized": "brl",
+    "raw": "brl"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "moeda": "dolar"
+  },
+  "output": {
+    "category": "international",
+    "currency_source": "moeda",
+    "has_currency": true,
+    "is_domestic": false,
+    "is_known": true,
+    "normalized": "usd",
+    "raw": "dolar"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "currency_source": "none",
+    "has_currency": false,
+    "is_domestic": false,
+    "is_known": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_currency_tag.php`.
