@@ -1664,3 +1664,69 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_pix_key_type_tag.php`.
+
+
+<!-- community-core:auth-outcome-tag -->
+### Canonical auth outcome tag for offline checks
+
+Gives admin auth, access logs, API auth and verify offline checks a shared deterministic way to normalize multilingual auth outcome request fields to canonical outcome tags and attention categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/auth_outcome_tag.php`, API `App\Support\Community\AuthOutcomeTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/auth_outcome_tag.php`, API `App\Support\Community\AuthOutcomeTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from auth outcome request to canonical outcome tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field a0 is payload.outcome when payload.outcome is a string, else payload.resultado when payload.resultado is a string, else payload.auth_result when payload.auth_result is a string, else missing. auth_source is outcome when a0 came from payload.outcome, resultado when from payload.resultado, auth_result when from payload.auth_result, else none. has_outcome is true when a0 is present as string else false. raw is a0 when has_outcome else empty string. normalized is success when raw equals success or sucesso or ok, failure when raw equals failure or failed or falha or erro, locked when raw equals locked or bloqueado or bloqueada, expired when raw equals expired or expirado or expirada, pending when raw equals pending or pendente, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is ok when normalized is success, blocked when normalized is locked, waiting when normalized is pending, attention when normalized is failure or normalized is expired, else unknown. is_success is true when normalized is success else false. is_terminal is true when normalized is success or normalized is failure or normalized is locked or normalized is expired else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of success, failure, locked, expired, pending or unknown, auth_source one of outcome, resultado, auth_result or none, has_outcome boolean, category one of ok, blocked, waiting, attention or unknown, is_success boolean, is_terminal boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "outcome": "success"
+  },
+  "output": {
+    "auth_source": "outcome",
+    "category": "ok",
+    "has_outcome": true,
+    "is_known": true,
+    "is_success": true,
+    "is_terminal": true,
+    "normalized": "success",
+    "raw": "success"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "resultado": "bloqueado"
+  },
+  "output": {
+    "auth_source": "resultado",
+    "category": "blocked",
+    "has_outcome": true,
+    "is_known": true,
+    "is_success": false,
+    "is_terminal": true,
+    "normalized": "locked",
+    "raw": "bloqueado"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "auth_source": "none",
+    "category": "unknown",
+    "has_outcome": false,
+    "is_known": false,
+    "is_success": false,
+    "is_terminal": false,
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_auth_outcome_tag.php`.
