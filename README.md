@@ -1601,3 +1601,66 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_payment_link_status_tag.php`.
+
+
+<!-- community-core:pix-key-type-tag -->
+### Canonical Pix key type tag for offline checks
+
+Gives admin utils pix, verify payments and API docs offline checks a shared deterministic way to normalize multilingual pix key type request fields to canonical key type tags and grouping categories without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/pix_key_type_tag.php`, API `App\Support\Community\PixKeyTypeTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/pix_key_type_tag.php`, API `App\Support\Community\PixKeyTypeTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from pix key type request to canonical key type tag with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field k0 is payload.key_type when payload.key_type is a string, else payload.tipo_chave when payload.tipo_chave is a string, else payload.pix_key_type when payload.pix_key_type is a string, else missing. key_source is key_type when k0 came from payload.key_type, tipo_chave when from payload.tipo_chave, pix_key_type when from payload.pix_key_type, else none. has_key_type is true when k0 is present as string else false. raw is k0 when has_key_type else empty string. normalized is cpf when raw equals cpf, cnpj when raw equals cnpj, email when raw equals email or e-mail, phone when raw equals phone or telefone or celular, random when raw equals random or aleatoria or aleatorio, else unknown. Matching is exact case-sensitive with no trimming, folding or pattern calls. category is document when normalized is cpf or normalized is cnpj, contact when normalized is email or normalized is phone, generated when normalized is random, else unknown. is_document is true when normalized is cpf or normalized is cnpj else false. is_known is true when normalized is not unknown else false. Output is an object with raw string, normalized one of cpf, cnpj, email, phone, random or unknown, key_source one of key_type, tipo_chave, pix_key_type or none, has_key_type boolean, category one of document, contact, generated or unknown, is_document boolean, and is_known boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "key_type": "email"
+  },
+  "output": {
+    "category": "contact",
+    "has_key_type": true,
+    "is_document": false,
+    "is_known": true,
+    "key_source": "key_type",
+    "normalized": "email",
+    "raw": "email"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "tipo_chave": "telefone"
+  },
+  "output": {
+    "category": "contact",
+    "has_key_type": true,
+    "is_document": false,
+    "is_known": true,
+    "key_source": "tipo_chave",
+    "normalized": "phone",
+    "raw": "telefone"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "category": "unknown",
+    "has_key_type": false,
+    "is_document": false,
+    "is_known": false,
+    "key_source": "none",
+    "normalized": "unknown",
+    "raw": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_pix_key_type_tag.php`.
