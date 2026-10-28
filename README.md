@@ -2132,3 +2132,70 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_runtime_extension_gate.php`.
+
+
+<!-- community-core:release-db-startup-gate -->
+### Canonical release database startup gate for offline checks
+
+Gives setup, diagnostics and release offline checks a shared deterministic way to decide explicit database startup readiness from database/user/password presence flags without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/release_db_startup_gate.php`, API `App\Support\Community\ReleaseDbStartupGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: src/App/Support/Community/release_db_startup_gate.php, API App.Support.Community.ReleaseDbStartupGate.runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from explicit release database startup request to startup readiness decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, comparisons and boolean/integer assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified stdClass, InvalidArgumentException, TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. has_database is true when payload.has_database is boolean true else false. has_user is true when payload.has_user is boolean true else false. has_password is true when payload.has_password is boolean true else false. missing_count is 0 plus 1 when has_database is false plus 1 when has_user is false plus 1 when has_password is false, one of 0, 1, 2 or 3. ready is true when has_database and has_user and has_password are all true else false. gate is start when ready is true else blocked. reason is ok when ready is true, else missing_database when has_database is false, else missing_user when has_user is false, else missing_password. Output is an object with has_database boolean, has_user boolean, has_password boolean, missing_count one of 0, 1, 2 or 3, ready boolean, gate one of start or blocked, and reason one of ok, missing_database, missing_user or missing_password. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not read env, query database, network or providers and does not decide delivery, authentication, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from runtime extension gate which uses pdo_mysql/curl/openssl/session flags, legacy forwarder gate which uses enable flag plus endpoints, modern webhook gate which uses Basic/HMAC validity, 2FA fallback gate which uses library/qr/manual-key flags, safe-log redaction which uses object/depth/sensitive-key handling, CSV formula guard which prefixes strings, and multilingual tag normalizers such as plan_interval_tag and payment_status_tag.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "has_database": true,
+    "has_password": true,
+    "has_user": true
+  },
+  "output": {
+    "gate": "start",
+    "has_database": true,
+    "has_password": true,
+    "has_user": true,
+    "missing_count": 0,
+    "ready": true,
+    "reason": "ok"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "has_database": true,
+    "has_password": true,
+    "has_user": false
+  },
+  "output": {
+    "gate": "blocked",
+    "has_database": true,
+    "has_password": true,
+    "has_user": false,
+    "missing_count": 1,
+    "ready": false,
+    "reason": "missing_user"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "gate": "blocked",
+    "has_database": false,
+    "has_password": false,
+    "has_user": false,
+    "missing_count": 3,
+    "ready": false,
+    "reason": "missing_database"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_release_db_startup_gate.php`.
