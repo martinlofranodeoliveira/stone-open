@@ -1938,3 +1938,111 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_webhook_auth_gate.php`.
+
+
+<!-- community-core:twofa-qr-fallback-gate -->
+### Canonical 2FA local QR fallback gate for offline checks
+
+Gives admin 2FA setup, verify and diagnostics offline checks a shared deterministic way to decide local QR versus manual-key fallback display and privacy readiness from explicit availability flags without database, network, filesystem writes or provider calls and without deciding delivery, authentication success, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/twofa_qr_fallback_gate.php`, API `App\Support\Community\TwofaQrFallbackGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/twofa_qr_fallback_gate.php`, API `App\Support\Community\TwofaQrFallbackGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from 2FA QR availability request to fallback display and privacy decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, comparisons and boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. library_available is true when payload.library_available is boolean true else false. qr_generated is true when payload.qr_generated is boolean true else false. has_manual_key is true when payload.has_manual_key is boolean true else false. has_manual_uri is true when payload.has_manual_uri is boolean true else false. external_image_used is true when payload.external_image_used is boolean true else false. local_qr_ok is true when library_available and qr_generated are both true else false. has_manual_fallback is true when has_manual_key and has_manual_uri are both true else false. privacy_ok is true when external_image_used is false else false. display is local_qr when local_qr_ok is true, else manual_only when has_manual_fallback is true, else missing_setup. reason is external_image_blocked when privacy_ok is false, else ok_local when local_qr_ok is true, else ok_manual when has_manual_fallback is true, else missing_material. ready is true when reason equals ok_local or reason equals ok_manual else false. Fixed tags use strict equality with no trimming, folding or pattern calls. Output is an object with library_available boolean, qr_generated boolean, has_manual_key boolean, has_manual_uri boolean, external_image_used boolean, local_qr_ok boolean, has_manual_fallback boolean, privacy_ok boolean, display one of local_qr, manual_only or missing_setup, ready boolean, and reason one of ok_local, ok_manual, missing_material or external_image_blocked. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not read env, query database, network or providers and does not decide delivery, authentication success, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from legacy forwarder gate which uses enable flag plus endpoints, modern webhook gate which uses Basic/HMAC validity, and multilingual tag normalizers such as plan_interval_tag and payment_status_tag.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "external_image_used": false,
+    "has_manual_key": true,
+    "has_manual_uri": true,
+    "library_available": true,
+    "qr_generated": true
+  },
+  "output": {
+    "display": "local_qr",
+    "external_image_used": false,
+    "has_manual_fallback": true,
+    "has_manual_key": true,
+    "has_manual_uri": true,
+    "library_available": true,
+    "local_qr_ok": true,
+    "privacy_ok": true,
+    "qr_generated": true,
+    "ready": true,
+    "reason": "ok_local"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "external_image_used": false,
+    "has_manual_key": true,
+    "has_manual_uri": true,
+    "library_available": false,
+    "qr_generated": false
+  },
+  "output": {
+    "display": "manual_only",
+    "external_image_used": false,
+    "has_manual_fallback": true,
+    "has_manual_key": true,
+    "has_manual_uri": true,
+    "library_available": false,
+    "local_qr_ok": false,
+    "privacy_ok": true,
+    "qr_generated": false,
+    "ready": true,
+    "reason": "ok_manual"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "display": "missing_setup",
+    "external_image_used": false,
+    "has_manual_fallback": false,
+    "has_manual_key": false,
+    "has_manual_uri": false,
+    "library_available": false,
+    "local_qr_ok": false,
+    "privacy_ok": true,
+    "qr_generated": false,
+    "ready": false,
+    "reason": "missing_material"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "external_image_used": true,
+    "has_manual_key": true,
+    "has_manual_uri": true,
+    "library_available": true,
+    "qr_generated": true
+  },
+  "output": {
+    "display": "local_qr",
+    "external_image_used": true,
+    "has_manual_fallback": true,
+    "has_manual_key": true,
+    "has_manual_uri": true,
+    "library_available": true,
+    "local_qr_ok": true,
+    "privacy_ok": false,
+    "qr_generated": true,
+    "ready": false,
+    "reason": "external_image_blocked"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_twofa_qr_fallback_gate.php`.
