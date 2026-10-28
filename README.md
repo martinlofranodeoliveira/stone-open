@@ -2046,3 +2046,89 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_twofa_qr_fallback_gate.php`.
+
+
+<!-- community-core:runtime-extension-gate -->
+### Canonical runtime extension gate for offline checks
+
+Gives setup, diagnostics and release offline checks a shared deterministic way to decide PHP runtime prerequisite readiness from explicit PDO-MySQL/cURL/OpenSSL/session flags without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/runtime_extension_gate.php`, API `App\Support\Community\RuntimeExtensionGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: src/App/Support/Community/runtime_extension_gate.php, API App\Support\Community\RuntimeExtensionGate\runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from explicit runtime extension request to prerequisite readiness decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, comparisons and boolean/integer assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. has_pdo_mysql is true when payload.has_pdo_mysql is boolean true else false. has_curl is true when payload.has_curl is boolean true else false. has_openssl is true when payload.has_openssl is boolean true else false. has_session is true when payload.has_session is boolean true else false. storage_ok is true when has_pdo_mysql is true else false. transport_ok is true when has_curl and has_openssl are both true else false. session_ok is true when has_session is true else false. missing_count is 0 plus 1 when has_pdo_mysql is false plus 1 when has_curl is false plus 1 when has_openssl is false plus 1 when has_session is false, one of 0, 1, 2, 3 or 4. ready is true when storage_ok and transport_ok and session_ok are all true else false. gate is ready when ready is true else blocked. reason is ok when ready is true, else missing_storage when storage_ok is false, else missing_transport when transport_ok is false, else missing_session. Output is an object with has_pdo_mysql boolean, has_curl boolean, has_openssl boolean, has_session boolean, storage_ok boolean, transport_ok boolean, session_ok boolean, missing_count one of 0, 1, 2, 3 or 4, ready boolean, gate one of ready or blocked, and reason one of ok, missing_storage, missing_transport or missing_session. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not read env, query database, network or providers and does not decide delivery, authentication, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from legacy forwarder gate which uses enable flag plus endpoints, modern webhook gate which uses Basic/HMAC validity, release database startup which uses database/user/password presence, 2FA gate which uses library/qr/manual-key flags, offline sandbox gate which uses readonly/isolation/privilege flags, safe-log redaction which uses object/depth/sensitive-key handling, CSV formula guard which prefixes strings, and multilingual tag normalizers such as plan_interval_tag and payment_status_tag.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "has_curl": true,
+    "has_openssl": true,
+    "has_pdo_mysql": true,
+    "has_session": true
+  },
+  "output": {
+    "gate": "ready",
+    "has_curl": true,
+    "has_openssl": true,
+    "has_pdo_mysql": true,
+    "has_session": true,
+    "missing_count": 0,
+    "ready": true,
+    "reason": "ok",
+    "session_ok": true,
+    "storage_ok": true,
+    "transport_ok": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "has_curl": true,
+    "has_openssl": true,
+    "has_pdo_mysql": false,
+    "has_session": true
+  },
+  "output": {
+    "gate": "blocked",
+    "has_curl": true,
+    "has_openssl": true,
+    "has_pdo_mysql": false,
+    "has_session": true,
+    "missing_count": 1,
+    "ready": false,
+    "reason": "missing_storage",
+    "session_ok": true,
+    "storage_ok": false,
+    "transport_ok": true
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "has_curl": true,
+    "has_openssl": false,
+    "has_pdo_mysql": true,
+    "has_session": true
+  },
+  "output": {
+    "gate": "blocked",
+    "has_curl": true,
+    "has_openssl": false,
+    "has_pdo_mysql": true,
+    "has_session": true,
+    "missing_count": 1,
+    "ready": false,
+    "reason": "missing_transport",
+    "session_ok": true,
+    "storage_ok": true,
+    "transport_ok": false
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_runtime_extension_gate.php`.
