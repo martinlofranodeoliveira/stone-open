@@ -1857,3 +1857,84 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_legacy_webhook_gate.php`.
+
+
+<!-- community-core:webhook-auth-gate -->
+### Canonical modern webhook auth gate for offline checks
+
+Gives admin webhooks, forward logs, diagnostics and API offline checks a shared deterministic way to decide modern webhook 503-before-persist versus proceed from explicit Basic/HMAC configuration and request validity without database, network, filesystem writes or provider calls and without deciding delivery, forwarding, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/webhook_auth_gate.php`, API `App\Support\Community\WebhookAuthGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/webhook_auth_gate.php`, API `App\\Support\\Community\\WebhookAuthGate\\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from modern webhook auth request to gate decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, comparisons and boolean/integer assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \\stdClass, \\InvalidArgumentException, \\TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. has_basic is true when payload.has_basic is boolean true else false. has_hmac is true when payload.has_hmac is boolean true else false. basic_valid is true when payload.basic_valid is boolean true else false. signature_valid is true when payload.signature_valid is boolean true else false. has_auth_config is true when has_basic or has_hmac else false. requires_signature is true when has_hmac is true else false. allowed is true when has_auth_config is true and (has_basic is false or basic_valid is true) and (has_hmac is false or signature_valid is true) else false. http_status is 200 when allowed else 503. decision is proceed when allowed else blocked_503. reason is missing_config when has_auth_config is false, else missing_signature when requires_signature is true and signature_valid is false, else invalid_basic when has_basic is true and basic_valid is false, else ok. block_persist is true when allowed is false else false. Output is an object with has_basic boolean, has_hmac boolean, basic_valid boolean, signature_valid boolean, has_auth_config boolean, requires_signature boolean, allowed boolean, http_status one of 200 or 503, decision one of proceed or blocked_503, reason one of ok, missing_config, missing_signature or invalid_basic, and block_persist boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, forwarding, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures via network, persist events or process payments. Distinct from legacy forwarder gate which uses enable flag plus endpoints.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "basic_valid": true,
+    "has_basic": true,
+    "has_hmac": false,
+    "signature_valid": false
+  },
+  "output": {
+    "allowed": true,
+    "basic_valid": true,
+    "block_persist": false,
+    "decision": "proceed",
+    "has_auth_config": true,
+    "has_basic": true,
+    "has_hmac": false,
+    "http_status": 200,
+    "reason": "ok",
+    "requires_signature": false,
+    "signature_valid": false
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "basic_valid": true,
+    "has_basic": true,
+    "has_hmac": true,
+    "signature_valid": false
+  },
+  "output": {
+    "allowed": false,
+    "basic_valid": true,
+    "block_persist": true,
+    "decision": "blocked_503",
+    "has_auth_config": true,
+    "has_basic": true,
+    "has_hmac": true,
+    "http_status": 503,
+    "reason": "missing_signature",
+    "requires_signature": true,
+    "signature_valid": false
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "allowed": false,
+    "basic_valid": false,
+    "block_persist": true,
+    "decision": "blocked_503",
+    "has_auth_config": false,
+    "has_basic": false,
+    "has_hmac": false,
+    "http_status": 503,
+    "reason": "missing_config",
+    "requires_signature": false,
+    "signature_valid": false
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_webhook_auth_gate.php`.
