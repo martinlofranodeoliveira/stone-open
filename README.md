@@ -1793,3 +1793,67 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_currency_tag.php`.
+
+
+<!-- community-core:legacy-webhook-gate -->
+### Canonical legacy webhook gate for offline checks
+
+Gives admin webhooks, forward logs and diagnostics offline checks a shared deterministic way to decide whether the disabled-by-default legacy forwarder in public/notificacao may be considered enabled from an explicit flag plus own endpoints without database, network, filesystem writes or provider calls and without deciding delivery, forwarding, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/legacy_webhook_gate.php`, API `App\Support\Community\LegacyWebhookGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: `src/App/Support/Community/legacy_webhook_gate.php`, API `App\Support\Community\LegacyWebhookGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from legacy forwarder enablement request to gate decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and integer/boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. flag_on is true when payload.enable_legacy is boolean true or equals 'true' exactly, else false. endpoints_list is payload.endpoints when payload.endpoints is an array else empty. endpoint_count counts elements of endpoints_list that are strings and not equal to empty string via foreach and strict equality, else 0. has_endpoints is true when endpoint_count is greater than 0 else false. gate is enabled when flag_on and has_endpoints are both true else disabled. ready is true when gate equals enabled else false. reason is ok when gate equals enabled, missing_endpoints when flag_on is true and has_endpoints is false, disabled_flag otherwise. Matching is exact case-sensitive with no trimming, folding or pattern calls. Output is an object with flag_on boolean, has_endpoints boolean, endpoint_count integer, gate one of enabled or disabled, ready boolean, and reason one of ok, missing_endpoints or disabled_flag. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not read env, query database, network or providers and does not decide delivery, forwarding, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "enable_legacy": true,
+    "endpoints": [
+      "https://example.com/hook"
+    ]
+  },
+  "output": {
+    "endpoint_count": 1,
+    "flag_on": true,
+    "gate": "enabled",
+    "has_endpoints": true,
+    "ready": true,
+    "reason": "ok"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "enable_legacy": true,
+    "endpoints": []
+  },
+  "output": {
+    "endpoint_count": 0,
+    "flag_on": true,
+    "gate": "disabled",
+    "has_endpoints": false,
+    "ready": false,
+    "reason": "missing_endpoints"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "endpoint_count": 0,
+    "flag_on": false,
+    "gate": "disabled",
+    "has_endpoints": false,
+    "ready": false,
+    "reason": "disabled_flag"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_legacy_webhook_gate.php`.
