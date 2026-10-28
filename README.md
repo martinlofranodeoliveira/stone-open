@@ -2199,3 +2199,89 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_release_db_startup_gate.php`.
+
+
+<!-- community-core:offline-sandbox-gate -->
+### Canonical offline sandbox isolation gate for offline checks
+
+Gives setup, diagnostics and release offline checks a shared deterministic way to decide Bubblewrap sandbox isolation readiness from explicit source/runtime readonly, network isolation and privilege-drop flags without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/offline_sandbox_gate.php`, API `App\Support\Community\OfflineSandboxGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: src/App/Support/Community/offline_sandbox_gate.php, API App\Support\Community\OfflineSandboxGate\runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from explicit offline sandbox isolation request to isolation readiness decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, comparisons and boolean/integer assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. source_readonly is true when payload.source_readonly is boolean true else false. runtime_readonly is true when payload.runtime_readonly is boolean true else false. network_isolated is true when payload.network_isolated is boolean true else false. no_effective_caps is true when payload.no_effective_caps is boolean true else false. no_new_privs is true when payload.no_new_privs is boolean true else false. filesystem_ok is true when source_readonly and runtime_readonly are both true else false. network_ok is true when network_isolated is true else false. privilege_ok is true when no_effective_caps and no_new_privs are both true else false. missing_count is 0 plus 1 when source_readonly is false plus 1 when runtime_readonly is false plus 1 when network_isolated is false plus 1 when no_effective_caps is false plus 1 when no_new_privs is false, one of 0, 1, 2, 3, 4 or 5. ready is true when filesystem_ok and network_ok and privilege_ok are all true else false. gate is ready when ready is true else blocked. reason is ok when ready is true, else missing_filesystem when filesystem_ok is false, else missing_network when network_ok is false, else missing_privileges. Output is an object with source_readonly boolean, runtime_readonly boolean, network_isolated boolean, no_effective_caps boolean, no_new_privs boolean, filesystem_ok boolean, network_ok boolean, privilege_ok boolean, missing_count one of 0, 1, 2, 3, 4 or 5, ready boolean, gate one of ready or blocked, and reason one of ok, missing_filesystem, missing_network or missing_privileges. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not read env, query database, network or providers and does not decide delivery, authentication, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from runtime extension gate which uses pdo_mysql/curl/openssl/session flags, release database startup gate which uses database/user/password presence, legacy forwarder gate which uses enable flag plus endpoints, modern webhook gate which uses Basic/HMAC validity, 2FA fallback gate which uses library/qr/manual-key flags, safe-log redaction which uses object/depth/sensitive-key handling, CSV formula guard which prefixes strings, and multilingual tag normalizers such as plan_interval_tag and payment_status_tag.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "network_isolated": true,
+    "no_effective_caps": true,
+    "no_new_privs": true,
+    "runtime_readonly": true,
+    "source_readonly": true
+  },
+  "output": {
+    "filesystem_ok": true,
+    "gate": "ready",
+    "missing_count": 0,
+    "network_isolated": true,
+    "network_ok": true,
+    "no_effective_caps": true,
+    "no_new_privs": true,
+    "privilege_ok": true,
+    "ready": true,
+    "reason": "ok",
+    "runtime_readonly": true,
+    "source_readonly": true
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "filesystem_ok": false,
+    "gate": "blocked",
+    "missing_count": 5,
+    "network_isolated": false,
+    "network_ok": false,
+    "no_effective_caps": false,
+    "no_new_privs": false,
+    "privilege_ok": false,
+    "ready": false,
+    "reason": "missing_filesystem",
+    "runtime_readonly": false,
+    "source_readonly": false
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "network_isolated": true,
+    "no_effective_caps": true,
+    "no_new_privs": false,
+    "runtime_readonly": true,
+    "source_readonly": true
+  },
+  "output": {
+    "filesystem_ok": true,
+    "gate": "blocked",
+    "missing_count": 1,
+    "network_isolated": true,
+    "network_ok": true,
+    "no_effective_caps": true,
+    "no_new_privs": false,
+    "privilege_ok": false,
+    "ready": false,
+    "reason": "missing_privileges",
+    "runtime_readonly": true,
+    "source_readonly": true
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_offline_sandbox_gate.php`.
