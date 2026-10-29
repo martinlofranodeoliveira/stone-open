@@ -2285,3 +2285,76 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_offline_sandbox_gate.php`.
+
+
+<!-- community-core:release-hygiene-gate -->
+### Canonical release excluded-content hygiene gate for offline checks
+
+Gives setup, release and offline verification checks a shared deterministic way to qualify explicit excluded-content presence flags for .env, logs, storage cache, Postman captures, webhook captures and operational docs without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome.
+
+Reusable deterministic JSON core: `src/App/Support/Community/release_hygiene_gate.php`, API `App\Support\Community\ReleaseHygieneGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: src/App/Support/Community/release_hygiene_gate.php, API App.Support.Community.ReleaseHygieneGate.runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from explicit release excluded-content presence flags to hygiene decision with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, comparisons and boolean/integer assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified stdClass, InvalidArgumentException, TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. has_env is true when payload.has_env is boolean true else false; has_logs is true when payload.has_logs is boolean true else false; has_storage_cache is true when payload.has_storage_cache is boolean true else false; has_postman_capture is true when payload.has_postman_capture is boolean true else false; has_webhook_capture is true when payload.has_webhook_capture is boolean true else false; has_operational_docs is true when payload.has_operational_docs is boolean true else false. present_count is 0 plus 1 when has_env is true plus 1 when has_logs is true plus 1 when has_storage_cache is true plus 1 when has_postman_capture is true plus 1 when has_webhook_capture is true plus 1 when has_operational_docs is true, one of 0, 1, 2, 3, 4, 5 or 6. clean is true when present_count equals 0 else false. gate is clean when clean is true else blocked. reason is ok when clean is true, else has_env when has_env is true, else has_logs when has_logs is true, else has_storage_cache when has_storage_cache is true, else has_postman_capture when has_postman_capture is true, else has_webhook_capture when has_webhook_capture is true, else has_operational_docs. Output is an object with has_env boolean, has_logs boolean, has_storage_cache boolean, has_postman_capture boolean, has_webhook_capture boolean, has_operational_docs boolean, present_count one of 0, 1, 2, 3, 4, 5 or 6, clean boolean, gate one of clean or blocked, and reason one of ok, has_env, has_logs, has_storage_cache, has_postman_capture, has_webhook_capture or has_operational_docs. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authentication success, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from release database startup gate which qualifies database/user/password presence for start, offline sandbox gate which qualifies source/runtime readonly plus network isolation plus privilege drops, runtime extension gate which qualifies pdo_mysql/curl/openssl/session flags, legacy forwarder gate which qualifies enable flag plus endpoints, modern webhook gate which qualifies Basic/HMAC validity, 2FA fallback gate which qualifies library/qr/manual-key flags, safe-log redaction which uses object/depth/sensitive-key handling, CSV formula guard which prefixes strings, and multilingual tag normalizers such as plan_interval_tag and payment_status_tag.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {},
+  "output": {
+    "clean": true,
+    "gate": "clean",
+    "has_env": false,
+    "has_logs": false,
+    "has_operational_docs": false,
+    "has_postman_capture": false,
+    "has_storage_cache": false,
+    "has_webhook_capture": false,
+    "present_count": 0,
+    "reason": "ok"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "has_env": true
+  },
+  "output": {
+    "clean": false,
+    "gate": "blocked",
+    "has_env": true,
+    "has_logs": false,
+    "has_operational_docs": false,
+    "has_postman_capture": false,
+    "has_storage_cache": false,
+    "has_webhook_capture": false,
+    "present_count": 1,
+    "reason": "has_env"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "has_logs": true,
+    "has_webhook_capture": true
+  },
+  "output": {
+    "clean": false,
+    "gate": "blocked",
+    "has_env": false,
+    "has_logs": true,
+    "has_operational_docs": false,
+    "has_postman_capture": false,
+    "has_storage_cache": false,
+    "has_webhook_capture": true,
+    "present_count": 2,
+    "reason": "has_logs"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_release_hygiene_gate.php`.
