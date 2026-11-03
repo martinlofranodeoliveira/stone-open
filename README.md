@@ -2358,3 +2358,82 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_release_hygiene_gate.php`.
+
+
+<!-- community-core:delivery-receipt-linkage-check -->
+### Canonical delivery receipt linkage check for offline checks
+
+Gives admin forward, webhook and API list offline checks a shared deterministic way to verify synthetic delivery receipt linkage across trace, event and client references without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome. Supports traceability review of synthetic receipts using only technical identifiers.
+
+Reusable deterministic JSON core: `src/App/Support/Community/delivery_receipt_linkage_check.php`, API `App\Support\Community\DeliveryReceiptLinkageCheck\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core, API runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from synthetic delivery receipt descriptor to linkage verdict with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict string equality, comparisons and integer/boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified stdClass, InvalidArgumentException, TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. trace_raw is payload.trace_id when payload.trace_id is a string else empty string; event_raw is payload.event_ref when payload.event_ref is a string else empty string; client_raw is payload.client_ref when payload.client_ref is a string else empty string. has_trace is true when trace_raw is not strictly equal to empty string else false; has_event is true when event_raw is not strictly equal to empty string else false; has_client is true when client_raw is not strictly equal to empty string else false. Matching uses exact strict equality with no trimming, folding or pattern calls. present_count counts true among has_trace, has_event and has_client from 0 to 3. linked is true when has_trace and has_event and has_client else false. trace_matches_event is true when has_trace and has_event and trace_raw strictly equals event_raw else false; trace_matches_client is true when has_trace and has_client and trace_raw strictly equals client_raw else false; event_matches_client is true when has_event and has_client and event_raw strictly equals client_raw else false. has_duplicate is true when trace_matches_event or trace_matches_client or event_matches_client else false. is_unique is true when linked and has_duplicate equals false else false. needs_review negates is_unique. Output is an object with trace_id string, event_ref string, client_ref string, has_trace boolean, has_event boolean, has_client boolean, present_count number 0 to 3, linked boolean, has_duplicate boolean, is_unique boolean and needs_review boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Uses only synthetic technical identifiers with no personal data, no timestamps and no Date. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from release database startup gate, offline sandbox gate, runtime extension gate, legacy webhook gate, webhook auth gate, 2FA fallback gate, release hygiene gate, safe-log redaction, CSV formula guard, export format tag, multilingual single-string tags such as plan_interval_tag and payment_status_tag, admin list window, list sort tag, currency tag, forward outcome tag, webhook event tag, auth outcome tag, account provider tag, card brand tag, customer tags, environment tag, invoice kind tag, payment method tag, payment link status tag, pix key type tag, site status tag, subscription status tag, user role tag, utils tool tag, verify target tag, admin report tag, admin task tag, admin log action tag, api resource tag and prior rejected locale-tag, boleto-status-tag, log-severity-tag, log-level-tag, report-period-tag, solution-qualification-gate, vendored-frontend-lib-tag, synthetic-result-invariant-check, image-alt-accessibility-check, admin-credential-shape-check and offline-verification-totals-check variants which lack three-way synthetic receipt linkage with exact cross-field duplicate detection.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "client_ref": "C1",
+    "event_ref": "E1",
+    "trace_id": "T1"
+  },
+  "output": {
+    "client_ref": "C1",
+    "event_ref": "E1",
+    "has_client": true,
+    "has_duplicate": false,
+    "has_event": true,
+    "has_trace": true,
+    "is_unique": true,
+    "linked": true,
+    "needs_review": false,
+    "present_count": 3,
+    "trace_id": "T1"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "client_ref": "C9",
+    "event_ref": "R7",
+    "trace_id": "R7"
+  },
+  "output": {
+    "client_ref": "C9",
+    "event_ref": "R7",
+    "has_client": true,
+    "has_duplicate": true,
+    "has_event": true,
+    "has_trace": true,
+    "is_unique": false,
+    "linked": true,
+    "needs_review": true,
+    "present_count": 3,
+    "trace_id": "R7"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "client_ref": "",
+    "event_ref": "",
+    "has_client": false,
+    "has_duplicate": false,
+    "has_event": false,
+    "has_trace": false,
+    "is_unique": false,
+    "linked": false,
+    "needs_review": true,
+    "present_count": 0,
+    "trace_id": ""
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_delivery_receipt_linkage_check.php`.
