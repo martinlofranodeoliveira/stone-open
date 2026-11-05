@@ -1,3 +1,56 @@
+<!-- public-docs-pt:v1 -->
+# Stone Open — integração de pagamentos em PHP
+
+Código de API/painel e esquema SQL com configuração explícita, webhook autenticado e TOTP local. Documentação e testes offline não autorizam cobranças ou operações reais.
+
+**Estado:** edição pública de desenvolvimento. Recursos e limites detalhados estão na referência técnica preservada abaixo.
+
+## Começar em português
+
+**Requisitos:** PHP com extensões PDO MySQL, cURL, OpenSSL e sessões; banco próprio para uma implantação revisada.
+
+```sh
+git clone https://github.com/martinlofranodeoliveira/stone-open.git
+cd stone-open
+# Leia .env.example e a seção Configuração própria.
+# Testes sintéticos e integração real são etapas diferentes.
+```
+
+Use um ambiente de desenvolvimento separado. Não envie `.env`, chaves, bancos,
+uploads ou dados pessoais ao Git. Nas demonstrações, use somente dados fictícios.
+
+## Documentação e validação
+
+[Atribuições de terceiros](THIRD_PARTY_NOTICES.md) · [Licença](LICENSE) · [Catálogo do laboratório](https://github.com/martinlofranodeoliveira#projetos-abertos)
+
+Os comandos acima foram conferidos nos manifests/guia público; não significam que todas as integrações, plataformas ou serviços reais foram exercitados nesta revisão documental.
+
+A referência técnica original abaixo preserva APIs, exemplos, limites e histórico
+de funcionalidades. Auxiliares em `community/` são módulos independentes: sua
+existência não comprova integração na interface ou no fluxo principal. Ao avaliar
+uma funcionalidade, consulte também o teste e o código do módulo correspondente.
+
+## Contribuir
+
+Abra uma issue com objetivo, comportamento observado, versão e um exemplo mínimo
+sintético. Para código, inclua testes relevantes, instruções de reprodução e
+atualização da documentação. Não envie segredos ou informações de terceiros em
+issues, exemplos, capturas ou pull requests. Mudanças úteis e completas têm
+preferência sobre alterações feitas apenas para aumentar atividade.
+
+## Licença e autoria
+
+Licença declarada no repositório: **MIT**. Consulte o arquivo de licença e mantenha as atribuições de terceiros.
+
+Nome técnico e URL preservados para manter imports, links e automações existentes.
+Título, descrição e tópicos em português facilitam localizar a finalidade do projeto.
+
+<!-- public-docs-pt:end -->
+
+---
+
+## Referência técnica e documentação original
+
 # Stone Open
 
 Código-fonte de uma aplicação PHP de integração de pagamentos, com API, painel administrativo, contas por site, planos/assinaturas, webhooks e ferramentas de administração. Esta edição mantém as camadas, controladores, views e esquema SQL; não inclui dados, contas, chaves, eventos capturados ou histórico da operação privada.
