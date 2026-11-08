@@ -2490,3 +2490,77 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_delivery_receipt_linkage_check.php`.
+
+
+<!-- community-core:synthetic-amount-precision-gate -->
+### Canonical synthetic amount precision gate for offline checks
+
+Gives AdminPayments, AdminInvoices, Response::csv and Validator offline checks a shared deterministic way to validate synthetic cent-integer amounts and decimal places for display rounding hygiene without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome. Supports synthetic hygiene using only synthetic integers with no personal, operational or credential data.
+
+Reusable deterministic JSON core: `src/App/Support/Community/synthetic_amount_precision_gate.php`, API `App\Support\Community\SyntheticAmountPrecisionGate\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: src/App/Support/Community/synthetic_amount_precision_gate.php, API App\Support\Community\SyntheticAmountPrecisionGate\runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from synthetic amount precision request to precision gate with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict integer equality, comparisons and integer/string/boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Field a0 is payload.amount_cents when payload.amount_cents is an integer, else payload.valor_centavos when payload.valor_centavos is an integer, else missing. amount_source is amount_cents when a0 came from payload.amount_cents, valor_centavos when from payload.valor_centavos, else none. has_amount is true when a0 is present as integer else false. raw_amount is a0 when has_amount else 0. Field d0 is payload.decimals when payload.decimals is an integer, else payload.casas when payload.casas is an integer, else missing. decimals_source is decimals when d0 came from payload.decimals, casas when from payload.casas, else none. has_decimals is true when d0 is present as integer else false. raw_decimals is d0 when has_decimals else 0. range_ok is true when has_amount and raw_amount >= -99999999 and raw_amount <= 99999999 else false. decimals_ok is true when has_decimals and raw_decimals equals 0 or 1 or 2 else false. Matching uses exact integer equality with no coercion, trimming, folding or pattern calls. is_precise is true when range_ok and decimals_ok else false. status is precise when is_precise is true else imprecise. Output is an object with raw_amount integer, amount_source one of amount_cents, valor_centavos or none, has_amount boolean, raw_decimals integer, decimals_source one of decimals, casas or none, has_decimals boolean, range_ok boolean, decimals_ok boolean, is_precise boolean, and status one of precise or imprecise. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Uses only synthetic integers for offline display rounding hygiene; no real charge, account or settlement. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from release database startup gate, offline sandbox gate, runtime extension gate, release hygiene gate, legacy webhook gate, webhook auth gate, 2FA fallback gate, safe-log redaction, CSV formula guard, export format tag, plan interval tag, payment status tag, admin list window, list sort tag, currency tag, forward outcome tag, webhook event tag, auth outcome tag, account provider tag, card brand tag, customer document tag, customer status tag, environment tag, invoice kind tag, payment method tag, payment link status tag, pix key type tag, site status tag, subscription status tag, user role tag, utils tool tag, verify target tag, admin report tag, admin task tag, admin log action tag, api resource tag, delivery receipt linkage check, admin bootstrap gate, public doc section tag, offline suite tag, learning trail readiness check, content calendar slot tag, decision trace frame check, diagnostics scope tag, module dependency graph gate, export preview window and invoice status tag which use single-field alias normalization or gate/linkage/counting logic on other domains, whereas this gate uses only amount_cents versus valor_centavos plus decimals versus casas with inclusive range -99999999 to 99999999 and decimals 0-2 precision for tracked AdminPayments plus AdminInvoices plus Response csv plus Validator display hygiene.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "amount_cents": 4200,
+    "decimals": 2
+  },
+  "output": {
+    "amount_source": "amount_cents",
+    "decimals_ok": true,
+    "decimals_source": "decimals",
+    "has_amount": true,
+    "has_decimals": true,
+    "is_precise": true,
+    "range_ok": true,
+    "raw_amount": 4200,
+    "raw_decimals": 2,
+    "status": "precise"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "casas": 0,
+    "valor_centavos": -42
+  },
+  "output": {
+    "amount_source": "valor_centavos",
+    "decimals_ok": true,
+    "decimals_source": "casas",
+    "has_amount": true,
+    "has_decimals": true,
+    "is_precise": true,
+    "range_ok": true,
+    "raw_amount": -42,
+    "raw_decimals": 0,
+    "status": "precise"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "amount_source": "none",
+    "decimals_ok": false,
+    "decimals_source": "none",
+    "has_amount": false,
+    "has_decimals": false,
+    "is_precise": false,
+    "range_ok": false,
+    "raw_amount": 0,
+    "raw_decimals": 0,
+    "status": "imprecise"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_synthetic_amount_precision_gate.php`.
