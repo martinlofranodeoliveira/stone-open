@@ -2564,3 +2564,63 @@ Examples (JSON input and expected output):
 ```
 
 Public regression tests: `lab_tests/community_synthetic_amount_precision_gate.php`.
+
+
+<!-- community-core:csv-cell-kind-tag -->
+### Canonical CSV cell kind tag for offline export checks
+
+Gives Response::csv and 15 admin/API export flows offline checks a shared deterministic way to classify synthetic cell values to canonical kinds without database, network, filesystem writes or provider calls and without deciding delivery, authorization, pricing, billing, settlement or financial outcome. Uses only synthetic values with no personal, operational or credential data.
+
+Reusable deterministic JSON core: `src/App/Support/Community/csv_cell_kind_tag.php`, API `App\Support\Community\CsvCellKindTag\runFeature(payload)`. This module is independently tested; application/UI integration is outside this change.
+
+Reusable deterministic JSON core: src/App/Support/Community/csv_cell_kind_tag.php, API App\Support\Community\CsvCellKindTag\runFeature(payload). This module is independently tested; application/UI integration is outside this change. Exposes runFeature(payload) as a pure deterministic JSON-to-JSON transform from synthetic CSV cell descriptor to canonical cell kind with no side effects, I/O, env, processes, time, randomness, callbacks or dependencies. PHP uses global function runFeature with stdClass for objects and arrays for arrays using only foreach, get_object_vars and fixed property reads plus strict equality, exact type checks and string/boolean assignment and no use/imports/classes/static/global variables, variable/parenthesized function calls, callback builtins, object methods, I/O or extensions. Uses fully qualified \stdClass, \InvalidArgumentException, \TypeError only when needed. All mutable state local; preserve input. Input payload when not an object behaves as empty object. Own-property presence is determined from get_object_vars keys with strict string equality; value alias priority is value then valor. Field v0 is payload.value when own property value is present, else payload.valor when own property valor is present, else missing. value_source is value when v0 came from payload.value, valor when from payload.valor, else none. has_value is true when v0 is present else false. kind is missing when has_value is false, null when v0 is null, boolean when v0 is boolean, number when v0 is integer or float, string when v0 is string, array when v0 is array, object when v0 is object. Type checks use exact PHP types with no coercion, trimming, folding or pattern calls. is_scalar is true when kind is string, number or boolean else false. needs_json is true when kind is missing, null, array or object else false, matching documented json_encode fallback for null/missing/arrays. is_empty_string is true when kind is string and v0 equals empty string else false with exact equality only. Output is an object with value_source one of value, valor or none, has_value boolean, kind one of missing, null, boolean, number, string, array or object, is_scalar boolean, needs_json boolean, and is_empty_string boolean. Extra input fields are ignored. Input is never mutated. Same input always yields identical output. Does not query database, network or providers and does not decide delivery, authorization, pricing, billing, settlement or financial outcome. Does not redact secrets, prefix formulas, verify signatures, persist events or process payments. Distinct from safe-log redaction, CSV formula guard, export format tag, plan interval tag, payment status tag, admin list window, list sort tag, currency tag, forward outcome tag, webhook event tag, auth outcome tag, account provider tag, card brand tag, customer document tag, customer status tag, environment tag, invoice kind tag, payment method tag, payment link status tag, pix key type tag, site status tag, subscription status tag, user role tag, utils tool tag, verify target tag, admin report tag, admin task tag, admin log action tag, api resource tag, delivery receipt linkage check, synthetic amount precision gate, release gates, webhook gates and prior rejected artifact, reconciliation and retention checks which use string alias normalization or gate/linkage/counting/precision/budget/presence logic on other domains, whereas this tag uses only value/valor JSON type classification to missing/null/boolean/number/string/array/object for tracked Response::csv offline export hygiene.
+
+Examples (JSON input and expected output):
+
+```json
+{
+  "input": {
+    "value": "=1+1"
+  },
+  "output": {
+    "has_value": true,
+    "is_empty_string": false,
+    "is_scalar": true,
+    "kind": "string",
+    "needs_json": false,
+    "value_source": "value"
+  }
+}
+```
+
+```json
+{
+  "input": {
+    "valor": -42
+  },
+  "output": {
+    "has_value": true,
+    "is_empty_string": false,
+    "is_scalar": true,
+    "kind": "number",
+    "needs_json": false,
+    "value_source": "valor"
+  }
+}
+```
+
+```json
+{
+  "input": {},
+  "output": {
+    "has_value": false,
+    "is_empty_string": false,
+    "is_scalar": false,
+    "kind": "missing",
+    "needs_json": true,
+    "value_source": "none"
+  }
+}
+```
+
+Public regression tests: `lab_tests/community_csv_cell_kind_tag.php`.
